@@ -510,6 +510,7 @@ declare module Artifacts {
   }
 
   interface TraceEngineResult {
+    // TODO: rename to paredtrace
     data: TraceEngine.Handlers.Types.ParsedTrace;
     insights: TraceEngine.Insights.Types.TraceInsightSets;
   }
