@@ -21,7 +21,7 @@ class RootCauses extends BaseGatherer {
 
   /**
    * @param {LH.Gatherer.Driver} driver
-   * @param {LH.Artifacts.TraceEngineResult['data']} parsedTrace
+   * @param {LH.Artifacts.TraceEngineResult['parsedTrace']} parsedTrace
    * @return {Promise<LH.Artifacts.TraceEngineRootCauses>}
    */
   static async runRootCauseAnalysis(driver, parsedTrace) {
@@ -137,7 +137,7 @@ class RootCauses extends BaseGatherer {
   async getArtifact(context) {
     const trace = context.dependencies.Trace;
     const traceEngineResult = await TraceEngineResult.request({trace}, context);
-    return RootCauses.runRootCauseAnalysis(context.driver, traceEngineResult.data);
+    return RootCauses.runRootCauseAnalysis(context.driver, traceEngineResult.parsedTrace);
   }
 }
 
