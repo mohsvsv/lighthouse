@@ -2765,6 +2765,48 @@
         ]
       }
     },
+    "has-hsts": {
+      "id": "has-hsts",
+      "title": "Use a strong HSTS policy",
+      "description": "Deployment of the HSTS header significantly reduces the risk of downgrading HTTP connections and eavesdropping attacks. A rollout in stages, starting with a low max-age is recommended. [Learn more about using a strong HSTS policy.](https://developer.chrome.com/docs/lighthouse/best-practices/has-hsts)",
+      "score": 1,
+      "scoreDisplayMode": "informative",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "description",
+            "valueType": "text",
+            "subItemsHeading": {
+              "key": "description"
+            },
+            "label": "Description"
+          },
+          {
+            "key": "directive",
+            "valueType": "code",
+            "subItemsHeading": {
+              "key": "directive"
+            },
+            "label": "Directive"
+          },
+          {
+            "key": "severity",
+            "valueType": "text",
+            "subItemsHeading": {
+              "key": "severity"
+            },
+            "label": "Severity"
+          }
+        ],
+        "items": [
+          {
+            "severity": "High",
+            "description": "No HSTS header found"
+          }
+        ]
+      }
+    },
     "script-treemap-data": {
       "id": "script-treemap-data",
       "title": "Script Treemap Data",
@@ -6710,6 +6752,11 @@
           "group": "best-practices-trust-safety"
         },
         {
+          "id": "has-hsts",
+          "weight": 0,
+          "group": "best-practices-trust-safety"
+        },
+        {
           "id": "paste-preventing-inputs",
           "weight": 3,
           "group": "best-practices-ux"
@@ -8152,6 +8199,12 @@
       },
       {
         "startTime": 0,
+        "name": "lh:audit:has-hsts",
+        "duration": 100,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 0,
         "name": "lh:audit:script-treemap-data",
         "duration": 100,
         "entryType": "measure"
@@ -8988,8 +9041,8 @@
       "dropdownSaveGist": "Save as Gist",
       "dropdownSaveHTML": "Save as HTML",
       "dropdownSaveJSON": "Save as JSON",
-      "dropdownViewer": "Open in Viewer",
       "dropdownViewUnthrottledTrace": "View Unthrottled Trace",
+      "dropdownViewer": "Open in Viewer",
       "errorLabel": "Error!",
       "errorMissingAuditInfo": "Report error: no audit information",
       "expandView": "Expand view",
@@ -9201,7 +9254,8 @@
       ],
       "core/lib/i18n/i18n.js | columnDescription": [
         "audits[errors-in-console].details.headings[1].label",
-        "audits[csp-xss].details.headings[0].label"
+        "audits[csp-xss].details.headings[0].label",
+        "audits[has-hsts].details.headings[0].label"
       ],
       "core/audits/server-response-time.js | title": [
         "audits[server-response-time].title"
@@ -9622,10 +9676,26 @@
         "audits[csp-xss].details.headings[2].label"
       ],
       "core/lib/i18n/i18n.js | itemSeverityHigh": [
-        "audits[csp-xss].details.items[0].severity"
+        "audits[csp-xss].details.items[0].severity",
+        "audits[has-hsts].details.items[0].severity"
       ],
       "core/audits/csp-xss.js | noCsp": [
         "audits[csp-xss].details.items[0].description"
+      ],
+      "core/audits/has-hsts.js | title": [
+        "audits[has-hsts].title"
+      ],
+      "core/audits/has-hsts.js | description": [
+        "audits[has-hsts].description"
+      ],
+      "core/audits/has-hsts.js | columnDirective": [
+        "audits[has-hsts].details.headings[1].label"
+      ],
+      "core/audits/has-hsts.js | columnSeverity": [
+        "audits[has-hsts].details.headings[2].label"
+      ],
+      "core/audits/has-hsts.js | noHsts": [
+        "audits[has-hsts].details.items[0].description"
       ],
       "core/audits/accessibility/accesskeys.js | title": [
         "audits.accesskeys.title"

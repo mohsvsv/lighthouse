@@ -21,6 +21,8 @@ import fpsMaxPassive from './test-definitions/fps-max-passive.js';
 import fpsScaled from './test-definitions/fps-scaled.js';
 import fpsOverflowX from './test-definitions/fps-overflow-x.js';
 import issuesMixedContent from './test-definitions/issues-mixed-content.js';
+import hstsFullyPresent from './test-definitions/hsts-fully-present.js';
+import hstsMissingDirectives from './test-definitions/hsts-missing-directives.js';
 import lanternFetch from './test-definitions/lantern-fetch.js';
 import lanternIdleCallbackLong from './test-definitions/lantern-idle-callback-long.js';
 import lanternIdleCallbackShort from './test-definitions/lantern-idle-callback-short.js';
@@ -79,6 +81,8 @@ const smokeTests = [
   fpsOverflowX,
   fpsScaled,
   issuesMixedContent,
+  hstsFullyPresent,
+  hstsMissingDirectives,
   lanternFetch,
   lanternIdleCallbackLong,
   lanternIdleCallbackShort,
