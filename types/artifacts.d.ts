@@ -369,6 +369,9 @@ declare module Artifacts {
     listeners?: Array<{
       type: Crdp.DOMDebugger.EventListener['type']
     }>
+    ancestorListeners?: Array<{
+      type: Crdp.DOMDebugger.EventListener['type']
+    }>
   }
 
   type BFCacheReasonMap = {

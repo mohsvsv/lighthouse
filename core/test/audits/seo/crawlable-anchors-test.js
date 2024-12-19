@@ -19,6 +19,7 @@ function runAudit({
     (rawHref || href) ? 'href' : null, role ? 'role' : null, name ? 'name' : null,
   ].filter(Boolean),
   listeners = onclick.trim().length ? [{type: 'click'}] : [],
+  ancestorListeners = [],
   node = {
     snippet: '',
     devtoolsNodePath: '',
@@ -33,6 +34,7 @@ function runAudit({
       href,
       name,
       listeners,
+      ancestorListeners,
       onclick,
       role,
       node,
@@ -104,6 +106,17 @@ describe('SEO: Crawlable anchors audit', () => {
       listeners: [{type: 'nope'}, {type: 'another'}, {type: 'click'}],
     });
     assert.equal(auditResultWithInvalidHref, 0, 'invalid href with any event listener is a faile');
+
+    const auditResultWithNoHref = runAudit({
+      listeners: [{type: 'nope'}, {type: 'another'}, {type: 'click'}],
+    });
+    assert.equal(auditResultWithNoHref, 0, 'no href with any event listener is a fail');
+
+    const auditResultWithParentListenerNoHref = runAudit({
+      ancestorListeners: [{type: 'nope'}, {type: 'another'}, {type: 'click'}],
+    });
+    assert.equal(auditResultWithParentListenerNoHref, 0,
+      'no href with any event listener on a parent is a fail');
 
     const auditResultNoListener = runAudit({
       rawHref: '/validPath',
