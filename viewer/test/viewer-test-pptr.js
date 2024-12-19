@@ -172,17 +172,14 @@ describe('Lighthouse Viewer', () => {
         'work-during-interaction',
       ];
       for (const category of lighthouseCategories) {
-        let expected = getAuditsOfCategory(category);
-        if (category === 'performance') {
-          expected = getAuditsOfCategory(category)
-            .filter(a => a.group !== 'hidden' && !nonNavigationAudits.includes(a.id));
-        }
-        expected = expected.map(audit => audit.id);
+        const expectedAuditIds = getAuditsOfCategory(category)
+          .filter(a => a.group !== 'hidden' && !nonNavigationAudits.includes(a.id))
+          .map(a => a.id);
         const elementIds = await getAuditElementsIds({category, selector: selectors.audits});
 
         assert.deepStrictEqual(
           elementIds.sort(),
-          expected.sort(),
+          expectedAuditIds.sort(),
           `${category} does not have the identical audits`
         );
       }
@@ -321,6 +318,9 @@ describe('Lighthouse Viewer', () => {
       'lhr-5.0.0.json',
       'lhr-6.0.0.json',
       'lhr-8.5.0.json',
+      'lhr-9.6.8.json',
+      'lhr-10.4.0.json',
+      'lhr-11.7.0.json',
     ].forEach((testFilename) => {
       it(`[${testFilename}] should load with no errors`, async () => {
         await verifyLhrLoadsWithNoErrors(`${LH_ROOT}/report/test-assets/${testFilename}`);
@@ -419,7 +419,6 @@ describe('Lighthouse Viewer', () => {
           'accessibility',
           'seo',
           'best-practices',
-          'pwa',
         ],
         strategy: 'mobile',
         // These values aren't set by default.
@@ -449,7 +448,7 @@ describe('Lighthouse Viewer', () => {
     it('should call out to PSI with specified categories', async () => {
       psiResponse = goodPsiResponse;
 
-      const url = `${viewerUrl}?psiurl=https://www.example.com&category=seo&category=pwa&utm_source=utm&locale=es`;
+      const url = `${viewerUrl}?psiurl=https://www.example.com&category=seo&category=accessibility&utm_source=utm&locale=es`;
       await viewerPage.goto(url);
 
       // Wait for report to render.call out to PSI with specified categories
@@ -469,7 +468,7 @@ describe('Lighthouse Viewer', () => {
         url: 'https://www.example.com',
         category: [
           'seo',
-          'pwa',
+          'accessibility',
         ],
         locale: 'es',
         utm_source: 'utm',

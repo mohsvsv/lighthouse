@@ -15,24 +15,11 @@ import {ReportRenderer} from '../../../report/renderer/report-renderer.js';
 import {TextEncoding} from '../../../report/renderer/text-encoding.js';
 import {renderFlowReport} from '../../../flow-report/api';
 
+const dom = new DOM(document, document.documentElement);
+
 /* global logger ReportGenerator */
 
 /** @typedef {import('./psi-api').PSIParams} PSIParams */
-
-/**
- * Guaranteed context.querySelector. Always returns an element or throws if
- * nothing matches query.
- * @template {string} T
- * @param {T} query
- * @param {ParentNode} context
- */
-function find(query, context) {
-  const result = context.querySelector(query);
-  if (result === null) {
-    throw new Error(`query ${query} not found`);
-  }
-  return result;
-}
 
 /**
  * Class that manages viewing Lighthouse reports.
@@ -72,11 +59,11 @@ export class LighthouseReportViewer {
   _addEventListeners() {
     document.addEventListener('paste', this._onPaste);
 
-    const gistUrlInput = find('.js-gist-url', document);
+    const gistUrlInput = dom.find('.js-gist-url');
     gistUrlInput.addEventListener('change', this._onUrlInputChange);
 
     // Hidden file input to trigger manual file selector.
-    const fileInput = find('input#hidden-file-input', document);
+    const fileInput = dom.find('input#hidden-file-input');
     fileInput.addEventListener('change', e => {
       if (!e.target) {
         return;
@@ -91,7 +78,7 @@ export class LighthouseReportViewer {
       inputTarget.value = '';
     });
 
-    const selectFileEl = find('.viewer-placeholder__file-button', document);
+    const selectFileEl = dom.find('.viewer-placeholder__file-button');
     selectFileEl.addEventListener('click', _ => {
       fileInput.click();
     });
@@ -228,17 +215,16 @@ export class LighthouseReportViewer {
       return;
     }
 
-    // @ts-expect-error Legacy use of report renderer
-    const dom = new DOM(document);
-    const renderer = new ReportRenderer(dom);
+    rootEl.classList.add('lh-root', 'lh-vars');
+    const reportDom = new DOM(document, rootEl);
+    const renderer = new ReportRenderer(reportDom);
 
     renderer.renderReport(json, rootEl, {
       occupyEntireViewport: true,
     });
 
-    const features = new ViewerUIFeatures(dom, {
+    const features = new ViewerUIFeatures(reportDom, {
       saveGist: saveGistCallback,
-      /** @param {LH.Result} newLhr */
       refresh: newLhr => {
         this._replaceReportHtml(newLhr);
       },
@@ -272,11 +258,11 @@ export class LighthouseReportViewer {
   // TODO: Really, `json` should really have type `unknown` and
   // we can have _validateReportJson verify that it's an LH.Result
   _replaceReportHtml(json) {
-    const container = find('main', document);
+    const container = dom.find('main');
 
     // Reset container content.
-    container.innerHTML = '';
-    const rootEl = document.createElement('div');
+    container.textContent = '';
+    const rootEl = dom.createElement('div');
     container.append(rootEl);
 
     // Only give gist-saving callback if current report isn't from a gist.
@@ -300,7 +286,7 @@ export class LighthouseReportViewer {
       }
     } catch (e) {
       logger.error(`Error rendering report: ${e.stack}`);
-      container.innerHTML = '';
+      container.textContent = '';
       throw e;
     } finally {
       this._reportIsFromGist = this._reportIsFromPSI = this._reportIsFromJSON = false;

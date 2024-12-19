@@ -16,7 +16,7 @@ import {expect} from 'expect';
 import tsc from 'typescript';
 import MessageParser from '@formatjs/icu-messageformat-parser';
 import esMain from 'es-main';
-import isDeepEqual from 'lodash/isEqual.js';
+import {isEqual} from 'lodash-es';
 
 import {Util} from '../../../shared/util.js';
 import {collectAndBakeCtcStrings} from './bake-ctc-to-lhl.js';
@@ -50,6 +50,7 @@ const ignoredPathComponents = [
   '**/core/lib/stack-packs.js',
   '**/test/**',
   '**/*-test.js',
+  '**/*.test.js',
   '**/*-renderer.js',
   '**/util-commonjs.js',
   'treemap/app/src/main.js',
@@ -57,7 +58,7 @@ const ignoredPathComponents = [
 
 /**
  * Extract the description and examples (if any) from a jsDoc annotation.
- * @param {import('typescript').JSDoc|undefined} ast
+ * @param {import('typescript').JSDoc|import('typescript').JSDocTag|undefined} ast
  * @param {string} message
  * @return {{description: string, examples: Record<string, string>}}
  */
@@ -66,7 +67,7 @@ function computeDescription(ast, message) {
     throw Error(`Missing description comment for message "${message}"`);
   }
 
-  if (ast.tags) {
+  if ('tags' in ast && ast.tags) {
     // This is a complex description with description and examples.
     let description = '';
     /** @type {Record<string, string>} */
@@ -318,6 +319,8 @@ function _processPlaceholderCustomFormattedIcu(icu) {
   icu.message = '';
   let idx = 0;
 
+  const rawNameCache = new Map();
+
   while (parts.length) {
     // Seperate out the match into parts.
     const [preambleText, rawName, format, formatType] = parts.splice(0, 4);
@@ -334,8 +337,22 @@ function _processPlaceholderCustomFormattedIcu(icu) {
       throw Error(`Unsupported custom-formatted ICU type var "${formatType}" in message "${icu.message}"`);
     }
 
+    let index;
+    const previousRawName = rawNameCache.get(rawName);
+    if (previousRawName) {
+      const [prevFormat, prevFormatType, prevIndex] = previousRawName;
+      if (prevFormat !== format || prevFormatType !== formatType) {
+        throw new Error(`must use same format and formatType for a given name. Invalid for: ${rawName}`);
+      }
+
+      index = prevIndex;
+    } else {
+      index = idx++;
+      rawNameCache.set(rawName, [format, formatType, index]);
+    }
+
     // Append ICU replacements if there are any.
-    const placeholderName = `CUSTOM_ICU_${idx++}`;
+    const placeholderName = `CUSTOM_ICU_${index}`;
     icu.message += `$${placeholderName}$`;
     let example;
 
@@ -392,7 +409,7 @@ function _processPlaceholderDirectIcu(icu, examples) {
       throw Error(`Example '${key}' provided, but has no corresponding ICU replacement in message "${icu.message}"`);
     }
     const eName = `ICU_${idx++}`;
-    tempMessage = tempMessage.replace(`{${key}}`, `$${eName}$`);
+    tempMessage = tempMessage.replaceAll(`{${key}}`, `$${eName}$`);
 
     icu.placeholders[eName] = {
       content: `{${key}}`,
@@ -519,7 +536,6 @@ function parseUIStrings(sourceStr, liveUIStrings) {
     // Use live message to avoid having to e.g. concat strings broken into parts.
     const message = (liveUIStrings[key]);
 
-    // @ts-expect-error - Not part of the public tsc interface yet.
     const jsDocComments = tsc.getJSDocCommentsAndTags(property);
     const {description, examples} = computeDescription(jsDocComments[0], message);
 
@@ -644,7 +660,7 @@ function doPlaceholdersMatch(strings) {
   // Technically placeholder `content` is not required to match by TC, but since
   // `example` must match and any auto-generated `example` is copied from `content`,
   // it would be confusing to let it differ when `example` is explicit.
-  return strings.every(val => isDeepEqual(val.ctc.placeholders, strings[0].ctc.placeholders));
+  return strings.every(val => isEqual(val.ctc.placeholders, strings[0].ctc.placeholders));
 }
 
 /**
@@ -713,7 +729,9 @@ function checkKnownFixedCollisions(strings) {
       'Back/forward cache is disabled due to a keepalive request.',
       'Consider uploading your GIF to a service which will make it available to embed as an HTML5 video.',
       'Consider uploading your GIF to a service which will make it available to embed as an HTML5 video.',
-      'Consider uploading your GIF to a service which will make it available to embed as an HTML5 video.',
+      'Directive',
+      'Directive',
+      'Directive',
       'Document contains a $MARKDOWN_SNIPPET_0$ that triggers $MARKDOWN_SNIPPET_1$',
       'Document contains a $MARKDOWN_SNIPPET_0$ that triggers $MARKDOWN_SNIPPET_1$',
       'Document has a valid $MARKDOWN_SNIPPET_0$',
@@ -724,12 +742,17 @@ function checkKnownFixedCollisions(strings) {
       'Lighthouse was unable to reliably load the page you requested. Make sure you are testing the correct URL and that the server is properly responding to all requests. (Status code: $ICU_0$)',
       'Name',
       'Name',
+      'No $MARKDOWN_SNIPPET_0$ directive found',
+      'No $MARKDOWN_SNIPPET_0$ directive found',
       'Pages that use portals are not currently eligible for back/forward cache.',
       'Pages that use portals are not currently eligible for back/forward cache.',
       'Pages with an in-flight network request are not currently eligible for back/forward cache.',
       'Pages with an in-flight network request are not currently eligible for back/forward cache.',
       'Potential Savings',
       'Potential Savings',
+      'Severity',
+      'Severity',
+      'Severity',
       'The page was evicted from the cache to allow another page to be cached.',
       'The page was evicted from the cache to allow another page to be cached.',
       'Use $MARKDOWN_SNIPPET_0$ to detect unused JavaScript code. $LINK_START_0$Learn more$LINK_END_0$',
@@ -748,6 +771,54 @@ function checkKnownFixedCollisions(strings) {
     console.log('copy/paste this to pass check:');
     console.log(collidingMessages);
     throw new Error(err.message);
+  }
+}
+
+/**
+ * @param {Record<any, any>} obj
+ * @return {Record<any, any>}
+ */
+function sortObject(obj) {
+  return Object.keys(obj).sort().reduce(function(result, key) {
+    // @ts-expect-error
+    result[key] = obj[key];
+    return result;
+  }, {});
+}
+
+/**
+ * Inject translated strings from `node_modules/@paulirish/trace_engine`. This avoids Lighthouse
+ * re-translating these same strings.
+ */
+function injectTraceEngineStrings() {
+  const traceEngineStringsDir = `${LH_ROOT}/node_modules/@paulirish/trace_engine/locales`;
+  const lhTraceStringsDir = `${LH_ROOT}/shared/localization/locales`;
+  for (const file of glob.sync(`${lhTraceStringsDir}/*.json`)) {
+    let name = path.basename(file);
+    if (name.endsWith('.ctc.json')) {
+      continue;
+    }
+
+    if (name === 'ar-XB.json') {
+      name = 'ar.json';
+    }
+
+    if (['en-XA.json'].includes(name)) {
+      continue;
+    }
+
+    const traceEnginePath = `${traceEngineStringsDir}/${name}`;
+    if (!fs.existsSync(traceEnginePath)) {
+      throw new Error(`expected locale file to exist: ${traceEnginePath}`);
+    }
+
+    const traceEngineStrings = JSON.parse(fs.readFileSync(traceEnginePath, 'utf-8'));
+    const strings = JSON.parse(fs.readFileSync(file, 'utf-8'));
+    for (const [key, value] of Object.entries(traceEngineStrings)) {
+      strings[`node_modules/@paulirish/trace_engine/${key.replace('.ts', '.js')}`] = value;
+    }
+
+    fs.writeFileSync(file, JSON.stringify(sortObject(strings), null, 2) + '\n');
   }
 }
 
@@ -778,6 +849,7 @@ async function main() {
 
   // Remove any obsolete strings in existing LHL files.
   console.log('Checking for out-of-date LHL messages...');
+  injectTraceEngineStrings();
   pruneObsoleteLhlMessages();
 
   // Report on translation progress.

@@ -16,7 +16,7 @@ import path from 'path';
 import fs from 'fs';
 import url from 'url';
 
-import cloneDeep from 'lodash/cloneDeep.js';
+import {cloneDeep} from 'lodash-es';
 import yargs from 'yargs';
 import * as yargsHelpers from 'yargs/helpers';
 import log from 'lighthouse-logger';
@@ -59,7 +59,7 @@ function getDefinitionsToRun(allTestDefns, requestedIds, excludedTests) {
   } else {
     smokes = allTestDefns.filter(test => {
       // Include all tests that *include* requested id.
-      // e.g. a requested 'pwa' will match 'pwa-airhorner', 'pwa-caltrain', etc
+      // e.g. a requested 'perf' will match 'perf-preload', 'perf-trace-elements', etc
       return requestedIds.some(requestedId => test.id.includes(requestedId));
     });
     console.log(`Running ONLY smoketests for: ${smokes.map(t => t.id).join(' ')}\n`);
@@ -125,7 +125,7 @@ async function begin() {
   const rawArgv = y
     .help('help')
     .usage('node $0 [<options>] <test-ids>')
-    .example('node $0 -j=1 pwa seo', 'run pwa and seo tests serially')
+    .example('node $0 -j=1 perf seo', 'run perf and seo tests serially')
     .option('_', {
       array: true,
       type: 'string',

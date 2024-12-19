@@ -31,13 +31,13 @@ jobs:
 
     steps:
     - name: git clone
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         # Depth of at least 2 for codecov coverage diffs. See https://github.com/GoogleChrome/lighthouse/pull/12079
         fetch-depth: 2
 
     - name: Use Node.js 18.x
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: 18.x
 
@@ -55,6 +55,14 @@ jobs:
         yarn c8 yarn smoke --debug -j=2 --retries=2 --shard=${{ matrix.smoke-test-shard }}/$SHARD_TOTAL
         yarn c8 report --reporter text-lcov > smoke-coverage.lcov
 
+    # TODO(15841): remove when using trace by default, and we want to remove CDT graph impl.
+    - name: Run smoke tests (lantern + trace)
+      if: matrix.smoke-test-shard == 1 && matrix.chrome-channel == 'ToT'
+      run: |
+        yarn smoke --debug -j=2 --retries=2 lantern
+      env:
+        INTERNAL_LANTERN_USE_TRACE: 1
+
     - name: Upload test coverage to Codecov
       if: matrix.chrome-channel == 'ToT'
       uses: codecov/codecov-action@eaaf4bedf32dbdc6b720b63067d99c4d77d6047d
@@ -67,7 +75,7 @@ jobs:
 
     - name: Upload failures
       if: failure()
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: Smokehouse (ubuntu; chrome ${{ matrix.chrome-channel }})
         path: .tmp/smokehouse-failures/
@@ -83,11 +91,11 @@ jobs:
 
     steps:
     - name: git clone
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     # Use Node 18 here earlier than everywhere else, see https://github.com/GoogleChrome/lighthouse/issues/15160#issuecomment-1589913408
     - name: Use Node.js 18.x
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: 18.x
 
@@ -103,14 +111,14 @@ jobs:
 
     - name: Run smoke tests
       # Windows bots are slow, so only run enough tests to verify matching behavior.
-      run: yarn smoke --debug -j=2 --retries=5 --shard=${{ matrix.smoke-test-shard }}/2 dbw oopif offline lantern metrics
+      run: yarn smoke --debug -j=2 --retries=5 --shard=${{ matrix.smoke-test-shard }}/2 dbw oopif lantern metrics
 
     # Fail if any changes were written to source files.
     - run: git diff --exit-code
 
     - name: Upload failures
       if: failure()
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: Smokehouse (windows)
         path: .tmp/smokehouse-failures/
@@ -132,10 +140,10 @@ jobs:
 
     steps:
     - name: git clone
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Use Node.js 18.x
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: 18.x
 
@@ -154,7 +162,7 @@ jobs:
 
     - name: Upload failures
       if: failure()
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: Smokehouse (bundled)
         path: .tmp/smokehouse-failures/

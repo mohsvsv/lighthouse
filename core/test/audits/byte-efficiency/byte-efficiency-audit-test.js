@@ -6,16 +6,16 @@
 
 import assert from 'assert/strict';
 
+import * as Lantern from '../../../lib/lantern/lantern.js';
 import {ByteEfficiencyAudit as ByteEfficiencyAudit_} from '../../../audits/byte-efficiency/byte-efficiency-audit.js';
-import {Simulator} from '../../../lib/lantern/simulator/simulator.js';
 import {LoadSimulator} from '../../../computed/load-simulator.js';
 import {getURLArtifactFromDevtoolsLog, readJson} from '../../test-utils.js';
 import {networkRecordsToDevtoolsLog} from '../../network-records-to-devtools-log.js';
 import {createTestTrace, rootFrame} from '../../create-test-trace.js';
 import {defaultSettings} from '../../../config/constants.js';
 
-const trace = readJson('../../fixtures/traces/lcp-m78.json', import.meta);
-const devtoolsLog = readJson('../../fixtures/traces/lcp-m78.devtools.log.json', import.meta);
+const trace = readJson('../../fixtures/artifacts/paul/trace.json', import.meta);
+const devtoolsLog = readJson('../../fixtures/artifacts/paul/devtoolslog.json', import.meta);
 
 describe('Byte efficiency base audit', () => {
   let simulator;
@@ -29,7 +29,7 @@ describe('Byte efficiency base audit', () => {
 
   beforeEach(() => {
     const mainDocumentUrl = 'http://example.com/';
-    const devtoolsLog = networkRecordsToDevtoolsLog([
+    const networkRecords = [
       {
         requestId: '1',
         url: mainDocumentUrl,
@@ -60,13 +60,15 @@ describe('Byte efficiency base audit', () => {
         frameId: rootFrame,
         timing: {sendEnd: 0},
       },
-    ]);
+    ];
+    const devtoolsLog = networkRecordsToDevtoolsLog(networkRecords);
 
     const trace = createTestTrace({
       frameUrl: mainDocumentUrl,
       // add a CPU node to force improvement to TTI
       topLevelTasks: [{ts: 0, duration: 100_000}],
       largestContentfulPaint: 3000,
+      networkRecords,
     });
 
     metricComputationInput = {
@@ -81,7 +83,7 @@ describe('Byte efficiency base audit', () => {
       settings: JSON.parse(JSON.stringify(defaultSettings)),
     };
 
-    simulator = new Simulator({});
+    simulator = new Lantern.Simulation.Simulator({});
   });
 
   const baseHeadings = [
@@ -124,7 +126,7 @@ describe('Byte efficiency base audit', () => {
     }, simulator, metricComputationInput, {computedCache: new Map()});
 
     assert.equal(result.metricSavings.FCP, 900);
-    assert.equal(result.metricSavings.LCP, 1350);
+    assert.equal(result.metricSavings.LCP, 900);
   });
 
   it('should use LCP request savings if larger than LCP graph savings', async () => {
@@ -228,7 +230,7 @@ describe('Byte efficiency base audit', () => {
       {computedCache: new Map()}
     );
 
-    assert.equal(result.numericValue, 300);
+    assert.equal(result.numericValue, 160);
   });
 
   it('should create load simulator with the specified settings', async () => {
@@ -255,78 +257,13 @@ describe('Byte efficiency base audit', () => {
     let result = await MockAudit.audit(artifacts, {settings, computedCache});
     // expect modest savings
     expect(result.numericValue).toBeLessThan(5000);
-    expect(result.numericValue).toMatchInlineSnapshot(`4640`);
+    expect(result.numericValue).toMatchInlineSnapshot(`1220`);
 
     settings = {throttlingMethod: 'simulate', throttling: ultraSlowThrottling};
     result = await MockAudit.audit(artifacts, {settings, computedCache});
     // expect lots of savings
     expect(result.numericValue).not.toBeLessThan(5000);
-    expect(result.numericValue).toMatchInlineSnapshot(`55730`);
-  });
-
-  it('should compute TTI savings differently from load savings', async () => {
-    class MockAudit extends ByteEfficiencyAudit {
-      static audit_(artifacts, records) {
-        return {
-          items: records.map(record => ({url: record.url, wastedBytes: record.transferSize * 0.5})),
-          headings: [],
-        };
-      }
-    }
-
-    class MockTtiAudit extends MockAudit {
-      static computeWasteWithTTIGraph(results, graph, simulator) {
-        return ByteEfficiencyAudit.computeWasteWithTTIGraph(results, graph, simulator,
-          {includeLoad: false});
-      }
-    }
-
-    const artifacts = {
-      GatherContext: {gatherMode: 'navigation'},
-      traces: {defaultPass: trace},
-      devtoolsLogs: {defaultPass: devtoolsLog},
-      URL: getURLArtifactFromDevtoolsLog(devtoolsLog),
-    };
-    const computedCache = new Map();
-
-    const modestThrottling = {rttMs: 150, throughputKbps: 1000, cpuSlowdownMultiplier: 2};
-    const settings = {throttlingMethod: 'simulate', throttling: modestThrottling};
-    const result = await MockAudit.audit(artifacts, {settings, computedCache});
-    const resultTti = await MockTtiAudit.audit(artifacts, {settings, computedCache});
-    expect(resultTti.numericValue).toBeLessThan(result.numericValue);
-    expect(result.numericValue).toMatchInlineSnapshot(`2130`);
-    expect(resultTti.numericValue).toMatchInlineSnapshot(`110`);
-  });
-
-  it('should allow overriding of computeWasteWithTTIGraph', async () => {
-    class MockAudit extends ByteEfficiencyAudit {
-      static audit_(artifacts, records) {
-        return {
-          items: records.map(record => ({url: record.url, wastedBytes: record.transferSize * 0.5})),
-          headings: [],
-        };
-      }
-    }
-
-    class MockOverrideAudit extends MockAudit {
-      static computeWasteWithTTIGraph(results, graph, simulator) {
-        return 0.5 * ByteEfficiencyAudit.computeWasteWithTTIGraph(results, graph, simulator);
-      }
-    }
-
-    const artifacts = {
-      GatherContext: {gatherMode: 'navigation'},
-      traces: {defaultPass: trace},
-      devtoolsLogs: {defaultPass: devtoolsLog},
-      URL: getURLArtifactFromDevtoolsLog(devtoolsLog),
-    };
-    const computedCache = new Map();
-
-    const modestThrottling = {rttMs: 150, throughputKbps: 1000, cpuSlowdownMultiplier: 2};
-    const settings = {throttlingMethod: 'simulate', throttling: modestThrottling};
-    const result = await MockAudit.audit(artifacts, {settings, computedCache});
-    const resultOverride = await MockOverrideAudit.audit(artifacts, {settings, computedCache});
-    expect(resultOverride.numericValue).toEqual(result.numericValue * 0.5);
+    expect(result.numericValue).toMatchInlineSnapshot(`13580`);
   });
 
   it('should compute savings with throughput in timespan mode', async () => {
@@ -350,7 +287,7 @@ describe('Byte efficiency base audit', () => {
     const modestThrottling = {rttMs: 150, throughputKbps: 1000, cpuSlowdownMultiplier: 2};
     const settings = {throttlingMethod: 'simulate', throttling: modestThrottling};
     const result = await MockAudit.audit(artifacts, {settings, computedCache});
-    expect(result.details.overallSavingsMs).toEqual(2120);
+    expect(result.details.overallSavingsMs).toEqual(1400);
   });
 
   it('should return n/a if no network records in timespan mode', async () => {
@@ -407,7 +344,7 @@ describe('Byte efficiency base audit', () => {
     };
     const settings = {throttlingMethod: 'devtools', throttling: modestThrottling};
     const result = await MockAudit.audit(artifacts, {settings, computedCache});
-    expect(result.details.overallSavingsMs).toEqual(30);
+    expect(result.details.overallSavingsMs).toEqual(40);
   });
 
   describe('#scoreForWastedMs', () => {

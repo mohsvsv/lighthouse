@@ -62,7 +62,7 @@ describe('PerfCategoryRenderer', () => {
   it('renders the sections', () => {
     const categoryDOM = renderer.render(category, sampleResults.categoryGroups);
     const sections = categoryDOM.querySelectorAll('.lh-category > .lh-audit-group');
-    assert.equal(sections.length, 4);
+    assert.equal(sections.length, 3);
   });
 
   it('renders the metrics', () => {
@@ -114,7 +114,7 @@ describe('PerfCategoryRenderer', () => {
     const sections = categoryDOM.querySelectorAll('.lh-category > .lh-audit-group');
     const metricSection = categoryDOM.querySelector('.lh-audit-group--metrics');
     assert.ok(!metricSection);
-    assert.equal(sections.length, 3);
+    assert.equal(sections.length, 2);
   });
 
   it('renders the metrics variance disclaimer as markdown', () => {
@@ -159,7 +159,7 @@ describe('PerfCategoryRenderer', () => {
         '.lh-category > .lh-audit-group.lh-audit-group--diagnostics');
 
     const diagnosticAuditIds = category.auditRefs.filter(audit => {
-      return !audit.group &&
+      return audit.group === 'diagnostics' &&
         !ReportUtils.showAsPassed(audit.result);
     }).map(audit => audit.id).sort();
     assert.ok(diagnosticAuditIds.length > 0);
@@ -174,7 +174,7 @@ describe('PerfCategoryRenderer', () => {
     const passedSection = categoryDOM.querySelector('.lh-clump--passed');
 
     const passedAudits = category.auditRefs.filter(audit =>
-      !audit.group &&
+      audit.group === 'diagnostics' &&
       ReportUtils.showAsPassed(audit.result));
     const passedElements = passedSection.querySelectorAll('.lh-audit');
     assert.equal(passedElements.length, passedAudits.length);
@@ -182,51 +182,6 @@ describe('PerfCategoryRenderer', () => {
 
   // Unsupported by perf cat renderer right now.
   it.skip('renders any manual audits', () => {
-  });
-
-  describe('budgets', () => {
-    it('renders the group and header', () => {
-      const categoryDOM = renderer.render(category, sampleResults.categoryGroups);
-
-      const budgetsGroup = categoryDOM.querySelector('.lh-audit-group.lh-audit-group--budgets');
-      assert.ok(budgetsGroup);
-
-      const header = budgetsGroup.querySelector('.lh-audit-group__header');
-      assert.ok(header);
-    });
-
-    it('renders the performance budget table', () => {
-      const categoryDOM = renderer.render(category, sampleResults.categoryGroups);
-      const budgetTable = categoryDOM.querySelector('#performance-budget.lh-table');
-      assert.ok(budgetTable);
-
-      const lhrBudgetEntries = sampleResults.audits['performance-budget'].details.items;
-      const tableRows = budgetTable.querySelectorAll('tbody > tr');
-      assert.strictEqual(tableRows.length, lhrBudgetEntries.length);
-    });
-
-    it('renders the timing budget table', () => {
-      const categoryDOM = renderer.render(category, sampleResults.categoryGroups);
-      const budgetTable = categoryDOM.querySelector('#timing-budget.lh-table');
-      assert.ok(budgetTable);
-
-      const lhrBudgetEntries = sampleResults.audits['timing-budget'].details.items;
-      const tableRows = budgetTable.querySelectorAll('tbody > tr');
-      assert.strictEqual(tableRows.length, lhrBudgetEntries.length);
-    });
-
-    it('does not render the budgets section when all budget audits are notApplicable', () => {
-      const budgetlessCategory = JSON.parse(JSON.stringify(category));
-      ['performance-budget', 'timing-budget'].forEach((id) => {
-        const budgetRef = budgetlessCategory.auditRefs.find(a => a.id === id);
-        budgetRef.result.scoreDisplayMode = 'notApplicable';
-        delete budgetRef.result.details;
-      });
-
-      const categoryDOM = renderer.render(budgetlessCategory, sampleResults.categoryGroups);
-      const budgetsGroup = categoryDOM.querySelector('.lh-audit-group.lh-audit-group--budgets');
-      assert.strictEqual(budgetsGroup, null);
-    });
   });
 
   describe('_getScoringCalculatorHref', () => {
@@ -241,13 +196,12 @@ describe('PerfCategoryRenderer', () => {
       const url = new URL(href);
       expect(url.hash.split('&')).toMatchInlineSnapshot(`
 Array [
-  "#FCP=6844",
-  "LCP=13320",
-  "TBT=1221",
+  "#FCP=6815",
+  "LCP=10954",
+  "TBT=1066",
   "CLS=0",
-  "SI=8114",
-  "TTI=8191",
-  "FMP=6844",
+  "SI=8471",
+  "TTI=8126",
 ]
 `);
     });
@@ -262,13 +216,12 @@ Array [
       try {
         expect(url.hash.split('&')).toMatchInlineSnapshot(`
 Array [
-  "#FCP=6844",
-  "LCP=13320",
-  "TBT=1221",
-  "CLS=0.14",
-  "SI=8114",
-  "TTI=8191",
-  "FMP=6844",
+  "#FCP=6815",
+  "LCP=10954",
+  "TBT=1066",
+  "CLS=0.1",
+  "SI=8471",
+  "TTI=8126",
   "device=mobile",
   "version=6.0.0",
 ]
@@ -362,14 +315,16 @@ Array [
 
       fakeCategory.auditRefs = [{
         id: 'audit-1',
+        group: 'diagnostics',
         result: {
           id: 'audit-1',
-          metricSavings: {'LCP': 50, 'FCP': 5},
+          metricSavings: {'LCP': 5000, 'FCP': 1000},
           score: 0,
           ...defaultAuditRef,
         },
       }, {
         id: 'audit-2',
+        group: 'diagnostics',
         result: {
           id: 'audit-2',
           score: 0.5,
@@ -377,18 +332,20 @@ Array [
         },
       }, {
         id: 'audit-3',
+        group: 'diagnostics',
         result: {
           id: 'audit-3',
           score: 0,
-          metricSavings: {'LCP': 50, 'FCP': 15},
+          metricSavings: {'LCP': 5000, 'FCP': 2000},
           ...defaultAuditRef,
         },
       }, {
         id: 'audit-4',
+        group: 'diagnostics',
         result: {
           id: 'audit-4',
           score: 0,
-          metricSavings: {'FCP': 15},
+          metricSavings: {'FCP': 2000},
           ...defaultAuditRef,
         },
       },
@@ -411,14 +368,16 @@ Array [
 
       fakeCategory.auditRefs = [{
         id: 'audit-1',
+        group: 'diagnostics',
         result: {
           id: 'audit-1',
-          metricSavings: {'LCP': 50, 'FCP': 5},
+          metricSavings: {'LCP': 5000, 'FCP': 1000},
           score: 0,
           ...defaultAuditRef,
         },
       }, {
         id: 'audit-2',
+        group: 'diagnostics',
         result: {
           id: 'audit-2',
           score: 0.5,
@@ -426,18 +385,20 @@ Array [
         },
       }, {
         id: 'audit-3',
+        group: 'diagnostics',
         result: {
           id: 'audit-3',
           score: 0,
-          metricSavings: {'LCP': 50, 'FCP': 15},
+          metricSavings: {'LCP': 5000, 'FCP': 2000},
           ...defaultAuditRef,
         },
       }, {
         id: 'audit-4',
+        group: 'diagnostics',
         result: {
           id: 'audit-4',
           score: 0,
-          metricSavings: {'FCP': 15},
+          metricSavings: {'FCP': 2000},
           ...defaultAuditRef,
         },
       },
@@ -467,6 +428,7 @@ Array [
     it('audits sorted with guidance level', () => {
       fakeCategory.auditRefs = [{
         id: 'audit-1',
+        group: 'diagnostics',
         result: {
           id: 'audit-1',
           metricSavings: {'LCP': 50, 'FCP': 5},
@@ -475,6 +437,7 @@ Array [
         },
       }, {
         id: 'audit-2',
+        group: 'diagnostics',
         result: {
           id: 'audit-2',
           score: 0.5,
@@ -483,6 +446,7 @@ Array [
         },
       }, {
         id: 'audit-3',
+        group: 'diagnostics',
         result: {
           id: 'audit-3',
           score: 0,
@@ -492,6 +456,7 @@ Array [
         },
       }, {
         id: 'audit-4',
+        group: 'diagnostics',
         result: {
           id: 'audit-4',
           score: 0.5,
@@ -500,6 +465,7 @@ Array [
         },
       }, {
         id: 'audit-5',
+        group: 'diagnostics',
         result: {
           id: 'audit-5',
           score: 0.5,
@@ -518,6 +484,7 @@ Array [
     it('audits without impact and guidance level sorted', () => {
       fakeCategory.auditRefs = [{
         id: 'audit-1',
+        group: 'diagnostics',
         result: {
           id: 'audit-1',
           metricSavings: {'LCP': 50, 'FCP': 5},
@@ -526,6 +493,7 @@ Array [
         },
       }, {
         id: 'audit-2',
+        group: 'diagnostics',
         result: {
           id: 'audit-2',
           score: 0,
@@ -534,6 +502,7 @@ Array [
         },
       }, {
         id: 'audit-3',
+        group: 'diagnostics',
         result: {
           id: 'audit-3',
           score: 0,
@@ -542,6 +511,7 @@ Array [
         },
       }, {
         id: 'audit-4',
+        group: 'diagnostics',
         result: {
           id: 'audit-4',
           score: 0.5,

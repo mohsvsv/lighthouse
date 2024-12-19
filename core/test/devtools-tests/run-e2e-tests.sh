@@ -14,5 +14,5 @@ export LH_ROOT="$SCRIPT_DIR/../../.."
 
 cd "$DEVTOOLS_PATH"
 
-TEST_PATTERN="${1:-lighthouse/*}"
-npm run e2etest -- "$TEST_PATTERN" --target=$BUILD_FOLDER
+TEST_PATTERN="${1:-test/e2e/lighthouse/*}"
+vpython3 third_party/node/node.py --output scripts/run_on_target.mjs gen/test/run.js "$TEST_PATTERN" --target=$BUILD_FOLDER

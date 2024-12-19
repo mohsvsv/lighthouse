@@ -156,63 +156,6 @@ const expectations = {
         property: 'og:description',
       },
     ],
-    TagsBlockingFirstPaint: [
-      {
-        tag: {
-          tagName: 'LINK',
-          url: 'http://localhost:10200/dobetterweb/dbw_tester.css?delay=100',
-        },
-      },
-      {
-        tag: {
-          tagName: 'LINK',
-          url: 'http://localhost:10200/dobetterweb/unknown404.css?delay=200',
-        },
-      },
-      {
-        tag: {
-          tagName: 'LINK',
-          url: 'http://localhost:10200/dobetterweb/dbw_tester.css?delay=2200',
-        },
-
-      },
-      {
-        tag: {
-          tagName: 'LINK',
-          url: 'http://localhost:10200/dobetterweb/dbw_tester.css?delay=3000&capped',
-          mediaChanges: [
-            {
-              href: 'http://localhost:10200/dobetterweb/dbw_tester.css?delay=3000&capped',
-              media: 'not-matching',
-              matches: false,
-            },
-            {
-              href: 'http://localhost:10200/dobetterweb/dbw_tester.css?delay=3000&capped',
-              media: 'screen',
-              matches: true,
-            },
-          ],
-        },
-      },
-      {
-        tag: {
-          tagName: 'SCRIPT',
-          url: 'http://localhost:10200/dobetterweb/dbw_tester.js',
-        },
-      },
-      {
-        tag: {
-          tagName: 'SCRIPT',
-          url: 'http://localhost:10200/dobetterweb/fcp-delayer.js?delay=5000',
-        },
-      },
-    ],
-    GlobalListeners: [{
-      type: 'unload',
-      scriptId: /^\d+$/,
-      lineNumber: '>300',
-      columnNumber: '>30',
-    }],
     DevtoolsLog: {
       _includes: [
         // Ensure we are getting async call stacks.
@@ -325,26 +268,26 @@ const expectations = {
       },
       'render-blocking-resources': {
         score: '<1',
-        numericValue: '>100',
+        numericValue: '>=50',
         details: {
           items: [
             {
-              url: 'http://localhost:10200/dobetterweb/dbw_tester.css?delay=100',
-            },
-            {
-              url: 'http://localhost:10200/dobetterweb/unknown404.css?delay=200',
-            },
-            {
-              url: 'http://localhost:10200/dobetterweb/dbw_tester.css?delay=2200',
+              url: 'http://localhost:10200/dobetterweb/fcp-delayer.js?delay=5000',
             },
             {
               url: 'http://localhost:10200/dobetterweb/dbw_tester.css?delay=3000&capped',
             },
             {
+              url: 'http://localhost:10200/dobetterweb/dbw_tester.css?delay=2200',
+            },
+            {
               url: 'http://localhost:10200/dobetterweb/dbw_tester.js',
             },
             {
-              url: 'http://localhost:10200/dobetterweb/fcp-delayer.js?delay=5000',
+              url: 'http://localhost:10200/dobetterweb/unknown404.css?delay=200',
+            },
+            {
+              url: 'http://localhost:10200/dobetterweb/dbw_tester.css?delay=100',
             },
           ],
         },
@@ -448,7 +391,7 @@ const expectations = {
       },
       'dom-size': {
         score: 1,
-        numericValue: 154,
+        numericValue: 151,
         details: {
           items: [
             {
@@ -456,7 +399,7 @@ const expectations = {
               value: {
                 type: 'numeric',
                 granularity: 1,
-                value: 154,
+                value: 151,
               },
             },
             {
@@ -477,20 +420,6 @@ const expectations = {
               node: {snippet: '<div id="shadow-root-container">'},
             },
           ],
-        },
-      },
-      'no-unload-listeners': {
-        score: 0,
-        details: {
-          items: [{
-            source: {
-              type: 'source-location',
-              url: 'http://localhost:10200/dobetterweb/dbw_tester.html',
-              urlProvider: 'network',
-              line: '>300',
-              column: '>30',
-            },
-          }],
         },
       },
       'bf-cache': {

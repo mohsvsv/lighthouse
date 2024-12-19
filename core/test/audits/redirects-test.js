@@ -34,6 +34,7 @@ const FAILING_THREE_REDIRECTS = [{
   priority: 'VeryHigh',
   url: 'https://m.example.com/final',
   timing: {receiveHeadersEnd: 19},
+  transferSize: 1000,
 }];
 
 const FAILING_TWO_REDIRECTS = [{
@@ -54,6 +55,7 @@ const FAILING_TWO_REDIRECTS = [{
   priority: 'VeryHigh',
   url: 'https://www.lisairish.com/',
   timing: {receiveHeadersEnd: 448},
+  transferSize: 1000,
 }];
 
 const SUCCESS_ONE_REDIRECT = [{
@@ -68,6 +70,7 @@ const SUCCESS_ONE_REDIRECT = [{
   priority: 'VeryHigh',
   url: 'https://www.lisairish.com/',
   timing: {receiveHeadersEnd: 139},
+  transferSize: 1000,
 }];
 
 const SUCCESS_NOREDIRECT = [{
@@ -76,6 +79,7 @@ const SUCCESS_NOREDIRECT = [{
   priority: 'VeryHigh',
   url: 'https://www.google.com/',
   timing: {receiveHeadersEnd: 140},
+  transferSize: 1000,
 }];
 
 const FAILING_CLIENTSIDE = [
@@ -92,6 +96,7 @@ const FAILING_CLIENTSIDE = [
     priority: 'VeryHigh',
     url: 'https://lisairish.com/',
     timing: {receiveHeadersEnd: 447},
+    transferSize: 1000,
   },
   {
     requestId: '2',
@@ -99,6 +104,7 @@ const FAILING_CLIENTSIDE = [
     priority: 'VeryHigh',
     url: 'https://www.lisairish.com/',
     timing: {receiveHeadersEnd: 448},
+    transferSize: 1000,
   },
 ];
 
@@ -108,6 +114,7 @@ const FAILING_SELF_REDIRECT = [{
   priority: 'VeryHigh',
   networkRequestTime: 0,
   responseHeadersEndTime: 500,
+  transferSize: 1000,
 },
 {
   requestId: '2',
@@ -115,6 +122,7 @@ const FAILING_SELF_REDIRECT = [{
   priority: 'VeryHigh',
   networkRequestTime: 1000,
   responseHeadersEndTime: 1500,
+  transferSize: 1000,
 },
 {
   requestId: '3',
@@ -122,6 +130,7 @@ const FAILING_SELF_REDIRECT = [{
   priority: 'VeryHigh',
   networkRequestTime: 3000,
   responseHeadersEndTime: 3500,
+  transferSize: 1000,
 }];
 
 describe('Performance: Redirects audit', () => {
@@ -129,9 +138,18 @@ describe('Performance: Redirects audit', () => {
     const devtoolsLog = networkRecordsToDevtoolsLog(networkRecords);
     const frameUrl = networkRecords[0].url;
 
-    const trace = createTestTrace({frameUrl, traceEnd: 5000});
+    const trace = createTestTrace({
+      frameUrl,
+      largestContentfulPaint: 15,
+      traceEnd: 5000,
+      networkRecords,
+    });
     const navStart = trace.traceEvents.find(e => e.name === 'navigationStart');
     navStart.args.data.navigationId = '1';
+    const fcp = trace.traceEvents.find(e => e.name === 'firstContentfulPaint');
+    fcp.args.data.navigationId = '1';
+    const lcp = trace.traceEvents.find(e => e.name === 'largestContentfulPaint::Candidate');
+    lcp.args.data.navigationId = '1';
 
     return {
       GatherContext: {gatherMode: 'navigation'},
@@ -151,6 +169,9 @@ describe('Performance: Redirects audit', () => {
 
     const traceEvents = artifacts.traces.defaultPass.traceEvents;
     const navStart = traceEvents.find(e => e.name === 'navigationStart');
+    const fcp = traceEvents.find(e => e.name === 'firstContentfulPaint');
+    const lcp = traceEvents.find(e => e.name === 'largestContentfulPaint::Candidate');
+
     const secondNavStart = JSON.parse(JSON.stringify(navStart));
     traceEvents.push(secondNavStart);
     navStart.args.data.isLoadingMainFrame = true;
@@ -159,6 +180,16 @@ describe('Performance: Redirects audit', () => {
     secondNavStart.args.data.isLoadingMainFrame = true;
     secondNavStart.args.data.documentLoaderURL = 'https://www.lisairish.com/';
     secondNavStart.args.data.navigationId = '2';
+
+    const secondFcp = JSON.parse(JSON.stringify(fcp));
+    traceEvents.push(secondFcp);
+    secondFcp.args.data.navigationId = '2';
+    secondFcp.ts += 2;
+
+    const secondLcp = JSON.parse(JSON.stringify(lcp));
+    traceEvents.push(secondLcp);
+    secondLcp.args.data.navigationId = '2';
+    secondFcp.ts += 2;
 
     const output = await RedirectsAudit.audit(artifacts, context);
     expect(output.details.items).toHaveLength(3);
@@ -246,14 +277,32 @@ describe('Performance: Redirects audit', () => {
 
     const traceEvents = artifacts.traces.defaultPass.traceEvents;
     const navStart = traceEvents.find(e => e.name === 'navigationStart');
+    const fcp = traceEvents.find(e => e.name === 'firstContentfulPaint');
+    const lcp = traceEvents.find(e => e.name === 'largestContentfulPaint::Candidate');
 
     const secondNavStart = JSON.parse(JSON.stringify(navStart));
     traceEvents.push(secondNavStart);
     secondNavStart.args.data.navigationId = '2';
 
+    const secondFcp = JSON.parse(JSON.stringify(fcp));
+    traceEvents.push(secondFcp);
+    secondFcp.args.data.navigationId = '2';
+
+    const secondLcp = JSON.parse(JSON.stringify(lcp));
+    traceEvents.push(secondLcp);
+    secondLcp.args.data.navigationId = '2';
+
     const thirdNavStart = JSON.parse(JSON.stringify(navStart));
     traceEvents.push(thirdNavStart);
     thirdNavStart.args.data.navigationId = '3';
+
+    const thirdFcp = JSON.parse(JSON.stringify(fcp));
+    traceEvents.push(thirdFcp);
+    thirdFcp.args.data.navigationId = '3';
+
+    const thirdLcp = JSON.parse(JSON.stringify(lcp));
+    traceEvents.push(thirdLcp);
+    thirdLcp.args.data.navigationId = '3';
 
     const output = await RedirectsAudit.audit(artifacts, context);
     expect(output).toMatchObject({

@@ -44,6 +44,22 @@ class ProtocolSession extends CrdpEventEmitter {
     this._handleProtocolEvent = this._handleProtocolEvent.bind(this);
     // @ts-expect-error Puppeteer expects the handler params to be type `unknown`
     this._cdpSession.on('*', this._handleProtocolEvent);
+
+    // If the target crashes, we can't continue gathering.
+    // FWIW, if the target unexpectedly detaches (eg the user closed the tab), pptr will
+    // catch that and reject in this._cdpSession.send, which is caught by us.
+    /** @param {Error} _ */
+    let rej = _ => {}; // Poor man's Promise.withResolvers()
+    this._targetCrashedPromise = /** @type {Promise<never>} */ (
+      new Promise((_, theRej) => rej = theRej));
+    this.on('Inspector.targetCrashed', async () => {
+      log.error('TargetManager', 'Inspector.targetCrashed');
+      // Manually detach so no more CDP traffic is attempted.
+      // Don't await, else our rejection will be a 'Target closed' protocol error on cross-talk
+      // CDP calls.
+      void this.dispose();
+      rej(new LighthouseError(LighthouseError.errors.TARGET_CRASHED));
+    });
   }
 
   id() {
@@ -97,9 +113,10 @@ class ProtocolSession extends CrdpEventEmitter {
     const timeoutMs = this.getNextProtocolTimeout();
     this._nextProtocolTimeout = undefined;
 
-    /** @type {NodeJS.Timer|undefined} */
+    /** @type {NodeJS.Timeout|undefined} */
     let timeout;
     const timeoutPromise = new Promise((resolve, reject) => {
+      // Unexpected setTimeout invocation to preserve the error stack. https://github.com/GoogleChrome/lighthouse/issues/13332
       // eslint-disable-next-line max-len
       timeout = setTimeout(reject, timeoutMs, new LighthouseError(LighthouseError.errors.PROTOCOL_TIMEOUT, {
         protocolMethod: method,
@@ -113,11 +130,24 @@ class ProtocolSession extends CrdpEventEmitter {
       log.formatProtocol('method <= browser ERR', {method}, 'error');
       throw LighthouseError.fromProtocolMessage(method, error);
     });
-    const resultWithTimeoutPromise = Promise.race([resultPromise, timeoutPromise]);
+    const resultWithTimeoutPromise =
+      Promise.race([resultPromise, timeoutPromise, this._targetCrashedPromise]);
 
     return resultWithTimeoutPromise.finally(() => {
       if (timeout) clearTimeout(timeout);
     });
+  }
+
+  /**
+   * Send and if there's an error response, do not reject.
+   * @template {keyof LH.CrdpCommands} C
+   * @param {C} method
+   * @param {LH.CrdpCommands[C]['paramsType']} params
+   * @return {Promise<void>}
+   */
+  sendCommandAndIgnore(method, ...params) {
+    return this.sendCommand(method, ...params)
+      .catch(e => log.verbose('session', method, e.message)).then(_ => void 0);
   }
 
   /**
@@ -127,7 +157,11 @@ class ProtocolSession extends CrdpEventEmitter {
   async dispose() {
     // @ts-expect-error Puppeteer expects the handler params to be type `unknown`
     this._cdpSession.off('*', this._handleProtocolEvent);
-    await this._cdpSession.detach();
+    await this._cdpSession.detach().catch(e => log.verbose('session', 'detach failed', e.message));
+  }
+
+  onCrashPromise() {
+    return this._targetCrashedPromise;
   }
 }
 

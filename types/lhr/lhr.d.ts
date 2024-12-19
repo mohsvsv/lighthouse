@@ -71,8 +71,6 @@ declare module Result {
     networkUserAgent: string;
     /** The benchmark index number that indicates rough device class. */
     benchmarkIndex: number;
-    /** Many benchmark indexes. */
-    benchmarkIndexes?: number[];
     /** The version of libraries with which these results were generated. Ex: axe-core. */
     credits?: Record<string, string|undefined>,
   }
@@ -105,6 +103,8 @@ declare module Result {
     score: number|null;
     /** An array of references to all the audit members of this category. */
     auditRefs: AuditRef[];
+    /** An array of all the modes supported by the category. */
+    supportedModes?:  Result.GatherMode[];
   }
 
   interface AuditRef {
@@ -116,8 +116,6 @@ declare module Result {
     group?: string;
     /** The conventional acronym for the audit/metric. */
     acronym?: string;
-    /** Any audit IDs closely relevant to this one. */
-    relevantAudits?: string[];
   }
 
   interface ReportGroup {

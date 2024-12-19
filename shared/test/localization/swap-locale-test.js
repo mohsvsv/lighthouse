@@ -25,13 +25,15 @@ describe('swap-locale', () => {
     const lhrDe = swapLocale(lhrEn, 'de').lhr;
 
     // Basic replacement
-    expect(lhrEn.audits.plugins.title).toEqual('Document avoids plugins');
-    expect(lhrDe.audits.plugins.title).toEqual('Dokument verwendet keine Plug-ins');
+    expect(lhrEn.audits['viewport'].title).toEqual(
+      'Has a `<meta name="viewport">` tag with `width` or `initial-scale`');
+    expect(lhrDe.audits['viewport'].title).toEqual(
+      'Hat ein `<meta name="viewport">`-Tag mit `width` oder `initial-scale`');
 
     // With ICU string argument values
-    expect(lhrEn.audits['dom-size'].displayValue).toMatchInlineSnapshot(`"153 elements"`);
+    expect(lhrEn.audits['dom-size'].displayValue).toMatchInlineSnapshot(`"151 elements"`);
     /* eslint-disable no-irregular-whitespace */
-    expect(lhrDe.audits['dom-size'].displayValue).toMatchInlineSnapshot(`"153 Elemente"`);
+    expect(lhrDe.audits['dom-size'].displayValue).toMatchInlineSnapshot(`"151 Elemente"`);
 
     // Renderer formatted strings
     expect(lhrEn.i18n.rendererFormattedStrings.labDataTitle).toEqual('Lab Data');
@@ -39,9 +41,9 @@ describe('swap-locale', () => {
 
     // Formatted numbers in placeholders.
     expect(lhrEn.audits['mainthread-work-breakdown'].displayValue).
-toMatchInlineSnapshot(`"2.2 s"`);
+toMatchInlineSnapshot(`"2.7 s"`);
     expect(lhrDe.audits['mainthread-work-breakdown'].displayValue).
-toMatchInlineSnapshot(`"2,2 s"`);
+toMatchInlineSnapshot(`"2,7 s"`);
     /* eslint-enable no-irregular-whitespace */
   });
 

@@ -8,7 +8,6 @@ import UsesHTTP2Audit from '../../../audits/dobetterweb/uses-http2.js';
 import {networkRecordsToDevtoolsLog} from '../../network-records-to-devtools-log.js';
 import {createTestTrace} from '../../create-test-trace.js';
 
-
 function buildArtifacts(networkRecords) {
   const frameUrl = networkRecords[0].url;
   const trace = createTestTrace({
@@ -17,15 +16,16 @@ function buildArtifacts(networkRecords) {
     topLevelTasks: [{ts: 1000, duration: 50}],
     largestContentfulPaint: 5000,
     firstContentfulPaint: 2000,
+    networkRecords,
   });
   const devtoolsLog = networkRecordsToDevtoolsLog(networkRecords);
 
   return {
     LinkElements: [],
     URL: {
-      requestedUrl: networkRecords[0].url,
-      mainDocumentUrl: networkRecords[0].url,
-      finalDisplayedUrl: networkRecords[0].url,
+      requestedUrl: frameUrl,
+      mainDocumentUrl: frameUrl,
+      finalDisplayedUrl: frameUrl,
     },
     devtoolsLogs: {defaultPass: devtoolsLog},
     traces: {defaultPass: trace},
@@ -43,31 +43,37 @@ describe('Resources are fetched over http/2', () => {
   it('should pass when resources are requested via http/2', async () => {
     const networkRecords = [{
       url: 'https://www.example.com/',
+      transferSize: 1000,
       priority: 'High',
       protocol: 'h2',
     },
     {
       url: 'https://www.example.com/2',
+      transferSize: 1000,
       priority: 'High',
       protocol: 'h2',
     },
     {
       url: 'https://www.example.com/3',
+      transferSize: 1000,
       priority: 'High',
       protocol: 'h2',
     },
     {
       url: 'https://www.example.com/4',
+      transferSize: 1000,
       priority: 'High',
       protocol: 'h2',
     },
     {
       url: 'https://www.example.com/5',
+      transferSize: 1000,
       priority: 'High',
       protocol: 'h2',
     },
     {
       url: 'https://www.example.com/6',
+      transferSize: 1000,
       priority: 'High',
       protocol: 'h2',
     },
@@ -129,8 +135,6 @@ describe('Resources are fetched over http/2', () => {
       },
     ];
     const artifacts = buildArtifacts(networkRecords);
-    artifacts.devtoolsLogs.defaultPass =
-       networkRecordsToDevtoolsLog(networkRecords);
 
     const result = await UsesHTTP2Audit.audit(artifacts, context);
     const hosts = new Set(result.details.items.map(item => new URL(item.url).host));
@@ -191,7 +195,6 @@ describe('Resources are fetched over http/2', () => {
       },
     ];
     const artifacts = buildArtifacts(networkRecords);
-    artifacts.devtoolsLogs.defaultPass = networkRecordsToDevtoolsLog(networkRecords);
 
     const result = await UsesHTTP2Audit.audit(artifacts, context);
     const urls = new Set(result.details.items.map(item => item.url));
@@ -270,42 +273,48 @@ describe('Resources are fetched over http/2', () => {
     const networkRecords = [
       {
         url: 'https://www.twitter.com/',
+        transferSize: 1000,
         priority: 'High',
         protocol: 'HTTP/1.1',
       },
       {
         url: 'https://www.twitter.com/2',
+        transferSize: 1000,
         priority: 'High',
         protocol: 'HTTP/1.1',
       },
       {
         url: 'https://www.twitter.com/3',
+        transferSize: 1000,
         priority: 'High',
         protocol: 'HTTP/1.1',
       },
       {
         url: 'https://www.twitter.com/4',
+        transferSize: 1000,
         priority: 'High',
         protocol: 'HTTP/1.1',
       },
       {
         url: 'https://www.twitter.com/5',
+        transferSize: 1000,
         priority: 'High',
         protocol: 'HTTP/1.1',
       },
       {
         url: 'https://www.twitter.com/embed/foo',
+        transferSize: 1000,
         priority: 'High',
         protocol: 'HTTP/1.1',
       },
       {
         url: 'https://www.facebook.com/embed',
+        transferSize: 1000,
         protocol: 'HTTP/1.1',
         priority: 'High',
       },
     ];
     const artifacts = buildArtifacts(networkRecords);
-    artifacts.devtoolsLogs.defaultPass = networkRecordsToDevtoolsLog(networkRecords);
 
     const result = await UsesHTTP2Audit.audit(artifacts, context);
     const urls = new Set(result.details.items.map(item => item.url));

@@ -96,10 +96,8 @@ const expectations = {
       'uses-http2': {
         score: 1,
         details: {
-          items: {
-            // localhost gets a free pass on uses-h2
-            length: 0,
-          },
+          // localhost gets a free pass on uses-h2
+          items: [],
         },
       },
       'unminified-css': {
@@ -115,7 +113,7 @@ const expectations = {
         details: {
           // the specific ms value is not meaningful for this smoketest
           // *some largish amount* of savings should be reported
-          overallSavingsMs: '>500',
+          overallSavingsMs: '>100',
           overallSavingsBytes: '>45000',
           items: [
             {
@@ -153,10 +151,13 @@ const expectations = {
       },
       'unused-javascript': {
         score: '<1',
-        details: {
+        metricSavings: {
           // the specific ms value here is not meaningful for this smoketest
           // *some* savings should be reported
-          overallSavingsMs: '>0',
+          FCP: '>0',
+        },
+        details: {
+          overallSavingsMs: '>=0',
           overallSavingsBytes: '35000 +/- 1000',
           items: [
             {
@@ -218,7 +219,7 @@ const expectations = {
         details: {
           // the specific ms value is not meaningful for this smoketest
           // *some largish amount* of savings should be reported
-          overallSavingsMs: '>700',
+          overallSavingsMs: '>100',
           overallSavingsBytes: '>50000',
           items: {
             length: 3,

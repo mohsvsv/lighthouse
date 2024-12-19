@@ -50,7 +50,7 @@ describe('asset-saver helper', () => {
       const traceEventsWithoutExtrasOnDisk = traceEventsOnDisk.slice(0, traceEvents.length);
       const traceEventsFake = traceEventsOnDisk.slice(traceEvents.length);
       assertTraceEventsEqual(traceEventsWithoutExtrasOnDisk, traceEvents);
-      assert.equal(traceEventsFake.length, 18);
+      assert.equal(traceEventsFake.length, 16);
       fs.unlinkSync(traceFilename);
     });
 
@@ -314,6 +314,15 @@ describe('asset-saver helper', () => {
       const originalArtifacts = await assetSaver.loadArtifacts(artifactsPath);
 
       await assetSaver.saveArtifacts(originalArtifacts, outputPath);
+      const roundTripArtifacts = await assetSaver.loadArtifacts(outputPath);
+      expect(roundTripArtifacts).toStrictEqual(originalArtifacts);
+    });
+
+    it('round trips saved artifacts (compressed)', async () => {
+      const artifactsPath = moduleDir + '/../results/artifacts/';
+      const originalArtifacts = await assetSaver.loadArtifacts(artifactsPath);
+
+      await assetSaver.saveArtifacts(originalArtifacts, outputPath, {gzip: true});
       const roundTripArtifacts = await assetSaver.loadArtifacts(outputPath);
       expect(roundTripArtifacts).toStrictEqual(originalArtifacts);
     });

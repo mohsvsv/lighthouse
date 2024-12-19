@@ -170,6 +170,10 @@ class TargetManager extends ProtocolEventEmitter {
       // Sometimes targets can be closed before we even have a chance to listen to their network activity.
       if (/Target closed/.test(err.message)) return;
 
+      // `Target.getTargetInfo` is not implemented for certain target types.
+      // Lighthouse isn't interested in these targets anyway so we can just ignore them.
+      if (/'Target.getTargetInfo' wasn't found/.test(err)) return;
+
       // Worker targets can be a bit fickle and we only enable them for diagnostic purposes.
       // We shouldn't throw a fatal error if there were issues attaching to them.
       if (targetType === 'worker') {
@@ -180,7 +184,7 @@ class TargetManager extends ProtocolEventEmitter {
       throw err;
     } finally {
       // Resume the target if it was paused, but if it's unnecessary, we don't care about the error.
-      await newSession.sendCommand('Runtime.runIfWaitingForDebugger').catch(() => {});
+      await newSession.sendCommandAndIgnore('Runtime.runIfWaitingForDebugger');
     }
   }
 
@@ -188,7 +192,7 @@ class TargetManager extends ProtocolEventEmitter {
    * @param {LH.Crdp.Runtime.ExecutionContextCreatedEvent} event
    */
   _onExecutionContextCreated(event) {
-    if (event.context.name === '__puppeteer_utility_world__') return;
+    if (event.context.name.match(/^__puppeteer_utility_world__/)) return;
     if (event.context.name === 'lighthouse_isolated_context') return;
 
     this._executionContextIdToDescriptions.set(event.context.uniqueId, event.context);
@@ -266,8 +270,9 @@ class TargetManager extends ProtocolEventEmitter {
       cdpSession.off('sessionattached', this._onSessionAttached);
     }
 
-    await this._rootCdpSession.send('Page.disable');
-    await this._rootCdpSession.send('Runtime.disable');
+    // Ignore failures on these in case the tab has crashed.
+    await this._rootCdpSession.send('Page.disable').catch(_ => {});
+    await this._rootCdpSession.send('Runtime.disable').catch(_ => {});
 
     this._enabled = false;
     this._targetIdToTargets = new Map();

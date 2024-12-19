@@ -96,6 +96,7 @@ function extractPartialTiming(networkRecord) {
     responseHeadersEndTime,
     networkEndTime,
     redirectResponseTimestamp, // Generated timestamp added in addRedirectResponseIfNeeded; only used as backup start time.
+    responseTimestamp, // Time of response event from CDP, not from the netstack.
   } = networkRecord;
 
   const requestTime = timeDefined(requestTimeS) ? requestTimeS * 1000 : undefined;
@@ -130,6 +131,7 @@ function extractPartialTiming(networkRecord) {
 
   return {
     redirectResponseTimestamp,
+    responseTimestamp,
     rendererStartTime,
     networkRequestTime,
     requestTime,
@@ -199,11 +201,14 @@ function getNormalizedRequestTiming(networkRecord) {
   const networkEndTime = extractedTimes.networkEndTime ??
       (responseHeadersEndTime + defaultTimingOffset);
 
+  const responseTimestamp = extractedTimes.responseTimestamp ?? requestTime + receiveHeadersEnd;
+
   return {
     rendererStartTime,
     networkRequestTime,
     responseHeadersEndTime,
     networkEndTime,
+    responseTimestamp,
     timing: {
       // TODO: other `timing` properties could have default values.
       ...networkRecord.timing,
@@ -241,7 +246,7 @@ function getRequestWillBeSentEvent(networkRecord, index, normalizedTiming) {
       wallTime: 0,
       initiator,
       type: networkRecord.resourceType || 'Document',
-      frameId: networkRecord.frameId || `${idBase}.1`,
+      frameId: networkRecord.frameId,
       redirectResponse: networkRecord.redirectResponse,
     },
     targetType: 'sessionTargetType' in networkRecord ? networkRecord.sessionTargetType : 'page',
@@ -277,22 +282,22 @@ function getResponseReceivedEvent(networkRecord, index, normalizedTiming) {
     method: 'Network.responseReceived',
     params: {
       requestId: getBaseRequestId(networkRecord) || `${idBase}.${index}`,
-      timestamp: normalizedTiming.responseHeadersEndTime / 1000,
+      timestamp: normalizedTiming.responseTimestamp / 1000,
       type: networkRecord.resourceType || undefined,
       response: {
         url: networkRecord.url || exampleUrl,
         status: networkRecord.statusCode || 200,
         headers,
         mimeType: typeof networkRecord.mimeType === 'string' ? networkRecord.mimeType : 'text/html',
-        connectionReused: networkRecord.connectionReused || false,
-        connectionId: networkRecord.connectionId || 140,
-        fromDiskCache: networkRecord.fromDiskCache || false,
-        fromServiceWorker: networkRecord.fetchedViaServiceWorker || false,
-        encodedDataLength: networkRecord.responseHeadersTransferSize || 0,
+        connectionReused: networkRecord.connectionReused ?? false,
+        connectionId: networkRecord.connectionId ?? 140,
+        fromDiskCache: networkRecord.fromDiskCache ?? false,
+        fromServiceWorker: networkRecord.fetchedViaServiceWorker ?? false,
+        encodedDataLength: networkRecord.responseHeadersTransferSize ?? 0,
         timing: {...normalizedTiming.timing},
-        protocol: networkRecord.protocol || 'http/1.1',
+        protocol: networkRecord.protocol ?? 'http/1.1',
       },
-      frameId: networkRecord.frameId || `${idBase}.1`,
+      frameId: networkRecord.frameId,
     },
     targetType: 'sessionTargetType' in networkRecord ? networkRecord.sessionTargetType : 'page',
     sessionId: networkRecord.sessionId,
@@ -479,4 +484,7 @@ function networkRecordsToDevtoolsLog(networkRecords, options = {}) {
   return devtoolsLog;
 }
 
-export {networkRecordsToDevtoolsLog};
+export {
+  networkRecordsToDevtoolsLog,
+  getNormalizedRequestTiming,
+};

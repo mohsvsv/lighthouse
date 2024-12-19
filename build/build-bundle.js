@@ -136,6 +136,11 @@ async function buildBundle(entryPath, distPath, opts = {minify: true}) {
     shimsObj[`${LH_ROOT}/shared/localization/locales.js`] = 'export const locales = {};';
   }
 
+  // Don't bundle third-party-web (CDT provides its own copy). This prevents duplications of 40+ KB.
+  if (isDevtools(entryPath)) {
+    shimsObj['third-party-web/nostats-subset.js'] = 'export default {};';
+  }
+
   for (const modulePath of modulesToIgnore) {
     shimsObj[modulePath] = 'export default {}';
   }

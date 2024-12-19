@@ -58,7 +58,7 @@ export class PerformanceCategoryRenderer extends CategoryRenderer {
     const fmp = auditRefs.find(audit => audit.id === 'first-meaningful-paint');
     if (tti) metrics.push(tti);
     if (fci) metrics.push(fci);
-    if (fmp) metrics.push(fmp);
+    if (fmp && typeof fmp.result.score === 'number') metrics.push(fmp);
 
     /**
      * Clamp figure to 2 decimal places
@@ -90,16 +90,6 @@ export class PerformanceCategoryRenderer extends CategoryRenderer {
     const url = new URL('https://googlechrome.github.io/lighthouse/scorecalc/');
     url.hash = params.toString();
     return url.href;
-  }
-
-  /**
-   * Returns true if the audit is a general performance insight (i.e. not a metric or hidden audit).
-   *
-   * @param {LH.ReportResult.AuditRef} audit
-   * @return {boolean}
-   */
-  _isPerformanceInsight(audit) {
-    return !audit.group;
   }
 
   /**
@@ -212,7 +202,7 @@ export class PerformanceCategoryRenderer extends CategoryRenderer {
     }
 
     const allInsights = category.auditRefs
-      .filter(audit => this._isPerformanceInsight(audit))
+      .filter(audit => audit.group === 'diagnostics')
       .map(auditRef => {
         const {overallImpact, overallLinearImpact} = this.overallImpact(auditRef, metricAudits);
         const guidanceLevel = auditRef.result.guidanceLevel || 1;
@@ -312,27 +302,6 @@ export class PerformanceCategoryRenderer extends CategoryRenderer {
     };
     const passedElem = this.renderClump('passed', clumpOpts);
     element.append(passedElem);
-
-    // Budgets
-    /** @type {Array<Element>} */
-    const budgetTableEls = [];
-    ['performance-budget', 'timing-budget'].forEach((id) => {
-      const audit = category.auditRefs.find(audit => audit.id === id);
-      if (audit?.result.details) {
-        const table = this.detailsRenderer.render(audit.result.details);
-        if (table) {
-          table.id = id;
-          table.classList.add('lh-details', 'lh-details--budget', 'lh-audit');
-          budgetTableEls.push(table);
-        }
-      }
-    });
-    if (budgetTableEls.length > 0) {
-      const [groupEl, footerEl] = this.renderAuditGroup(groups.budgets);
-      budgetTableEls.forEach(table => groupEl.insertBefore(table, footerEl));
-      groupEl.classList.add('lh-audit-group--budgets');
-      element.append(groupEl);
-    }
 
     const isNavigationMode = !options || options?.gatherMode === 'navigation';
     if (isNavigationMode && category.score !== null) {

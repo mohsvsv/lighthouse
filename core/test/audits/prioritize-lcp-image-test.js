@@ -23,6 +23,7 @@ describe('Performance: prioritize-lcp-image audit', () => {
         [PrioritizeLcpImage.DEFAULT_PASS]: createTestTrace({
           traceEnd: 6000,
           largestContentfulPaint: 4500,
+          networkRecords,
         }),
       },
       devtoolsLogs: {

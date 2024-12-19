@@ -8,86 +8,110 @@ import assert from 'assert/strict';
 
 import RenderBlockingResourcesAudit from '../../../audits/byte-efficiency/render-blocking-resources.js'; // eslint-disable-line max-len
 import * as constants from '../../../config/constants.js';
-import {NetworkNode} from '../../../lib/lantern/network-node.js';
-import {CPUNode} from '../../../lib/lantern/cpu-node.js';
-import {Simulator} from '../../../lib/lantern/simulator/simulator.js';
+import * as Lantern from '../../../lib/lantern/lantern.js';
 import {NetworkRequest} from '../../../lib/network-request.js';
 import {getURLArtifactFromDevtoolsLog, readJson} from '../../test-utils.js';
 
-const trace = readJson('../../fixtures/traces/progressive-app-m60.json', import.meta);
-const devtoolsLog = readJson('../../fixtures/traces/progressive-app-m60.devtools.log.json', import.meta);
-const ampTrace = readJson('../../fixtures/traces/amp-m86.trace.json', import.meta);
-const ampDevtoolsLog = readJson('../../fixtures/traces/amp-m86.devtoolslog.json', import.meta);
-const textLcpTrace = readJson('../../fixtures/traces/frame-metrics-m90.json', import.meta);
-const textLcpDevtoolsLog = readJson('../../fixtures/traces/frame-metrics-m90.devtools.log.json', import.meta);
+const {NetworkNode, CPUNode} = Lantern.Graph;
+const {Simulator} = Lantern.Simulation;
+
+const trace = readJson('../../fixtures/artifacts/render-blocking/trace.json', import.meta);
+const devtoolsLog = readJson('../../fixtures/artifacts/render-blocking/devtoolslog.json', import.meta);
+const lrTrace = readJson('../../fixtures/artifacts/lr/trace.json.gz', import.meta);
+const lrDevtoolsLog = readJson('../../fixtures/artifacts/lr/devtoolslog.json.gz', import.meta);
 
 const mobileSlow4G = constants.throttling.mobileSlow4G;
 
 describe('Render blocking resources audit', () => {
-  it('evaluates http2 input correctly', async () => {
+  it('evaluates render blocking input correctly', async () => {
     const artifacts = {
       URL: getURLArtifactFromDevtoolsLog(devtoolsLog),
       GatherContext: {gatherMode: 'navigation'},
       traces: {defaultPass: trace},
       devtoolsLogs: {defaultPass: devtoolsLog},
-      TagsBlockingFirstPaint: [
-        {
-          tag: {url: 'https://pwa.rocks/script.js'},
-          transferSize: 621,
-        },
-      ],
-    };
-
-    const settings = {throttlingMethod: 'simulate', throttling: mobileSlow4G};
-    const computedCache = new Map();
-    const result = await RenderBlockingResourcesAudit.audit(artifacts, {settings, computedCache});
-    assert.equal(result.score, 1);
-    assert.equal(result.numericValue, 0);
-    assert.deepStrictEqual(result.metricSavings, {FCP: 0, LCP: 0});
-  });
-
-  it('evaluates correct wastedMs when LCP is text', async () => {
-    const artifacts = {
-      URL: getURLArtifactFromDevtoolsLog(textLcpDevtoolsLog),
-      GatherContext: {gatherMode: 'navigation'},
-      traces: {defaultPass: textLcpTrace},
-      devtoolsLogs: {defaultPass: textLcpDevtoolsLog},
-      TagsBlockingFirstPaint: [
-        {
-          tag: {url: 'http://localhost:10200/perf/frame-metrics-inner.html'},
-        },
-        {
-          tag: {url: 'http://localhost:10200/favicon.ico'},
-        },
-      ],
       Stacks: [],
     };
 
     const settings = {throttlingMethod: 'simulate', throttling: mobileSlow4G};
     const computedCache = new Map();
     const result = await RenderBlockingResourcesAudit.audit(artifacts, {settings, computedCache});
-    assert.deepStrictEqual(result.metricSavings, {FCP: 783, LCP: 783});
+    assert.equal(result.score, 0);
+    assert.equal(result.numericValue, 300);
+    assert.deepStrictEqual(result.metricSavings, {FCP: 300, LCP: 0});
+  });
+
+  describe('Lightrider', () => {
+    before(() => {
+      global.isLightrider = true;
+    });
+
+    after(() => {
+      global.isLightrider = undefined;
+    });
+
+    it('considers X-TotalFetchedSize in its reported transfer size', async () => {
+      // TODO(15841): The trace backend knows nothing of Lantern.
+      if (process.env.INTERNAL_LANTERN_USE_TRACE !== undefined) {
+        return;
+      }
+
+      const artifacts = {
+        URL: getURLArtifactFromDevtoolsLog(lrDevtoolsLog),
+        GatherContext: {gatherMode: 'navigation'},
+        traces: {defaultPass: lrTrace},
+        devtoolsLogs: {defaultPass: lrDevtoolsLog},
+        Stacks: [],
+      };
+
+      const settings = {throttlingMethod: 'simulate', throttling: mobileSlow4G};
+      const computedCache = new Map();
+      const result = await RenderBlockingResourcesAudit.audit(artifacts, {settings, computedCache});
+      expect(result.details.items).toMatchInlineSnapshot(`
+  Array [
+    Object {
+      "totalBytes": 128188,
+      "url": "https://www.llentab.cz/wp-content/uploads/fusion-styles/715df3f482419a9ed822189df6e57839.min.css?ver=3.11.10",
+      "wastedMs": 750,
+    },
+  ]
+  `);
+      assert.equal(result.score, 0);
+      assert.equal(result.numericValue, 0);
+      assert.deepStrictEqual(result.metricSavings, {FCP: 0, LCP: 0});
+    });
+  });
+
+  it('evaluates correct wastedMs when LCP is text', async () => {
+    const textLcpTrace = JSON.parse(JSON.stringify(trace));
+
+    // Make it look like the LCP was text in the trace
+    textLcpTrace.traceEvents =
+      textLcpTrace.traceEvents.filter(e => e.name !== 'LargestImagePaint::Candidate');
+    const lcpEvent =
+      textLcpTrace.traceEvents.find(e => e.name === 'largestContentfulPaint::Candidate');
+    lcpEvent.args.data.type = 'text';
+    delete lcpEvent.args.data.url;
+
+    const artifacts = {
+      URL: getURLArtifactFromDevtoolsLog(devtoolsLog),
+      GatherContext: {gatherMode: 'navigation'},
+      traces: {defaultPass: textLcpTrace},
+      devtoolsLogs: {defaultPass: devtoolsLog},
+      Stacks: [],
+    };
+
+    const settings = {throttlingMethod: 'simulate', throttling: mobileSlow4G};
+    const computedCache = new Map();
+    const result = await RenderBlockingResourcesAudit.audit(artifacts, {settings, computedCache});
+    assert.deepStrictEqual(result.metricSavings, {FCP: 300, LCP: 300});
   });
 
   it('evaluates amp page correctly', async () => {
     const artifacts = {
-      URL: getURLArtifactFromDevtoolsLog(ampDevtoolsLog),
+      URL: getURLArtifactFromDevtoolsLog(devtoolsLog),
       GatherContext: {gatherMode: 'navigation'},
-      traces: {defaultPass: ampTrace},
-      devtoolsLogs: {defaultPass: ampDevtoolsLog},
-      TagsBlockingFirstPaint: [
-        {
-          tag: {
-            url:
-              'https://fonts.googleapis.com/css?family=Fira+Sans+Condensed%3A400%2C400i%2C600%2C600i&subset=latin%2Clatin-ext&display=swap',
-          },
-          transferSize: 621,
-        },
-        {
-          tag: {url: 'https://fonts.googleapis.com/css?family=Montserrat'},
-          transferSize: 621,
-        },
-      ],
+      traces: {defaultPass: trace},
+      devtoolsLogs: {defaultPass: devtoolsLog},
       Stacks: [
         {
           detector: 'js',
@@ -102,18 +126,21 @@ describe('Render blocking resources audit', () => {
     const settings = {throttlingMethod: 'simulate', throttling: mobileSlow4G};
     const computedCache = new Map();
     const result = await RenderBlockingResourcesAudit.audit(artifacts, {settings, computedCache});
-    expect(result.numericValue).toMatchInlineSnapshot(`469`);
-    expect(result.details.items).toMatchObject([
+    expect(result.numericValue).toEqual(0);
+    expect(result.details.items).toEqual([
       {
-        'totalBytes': 621,
-        'url': 'https://fonts.googleapis.com/css?family=Fira+Sans+Condensed%3A400%2C400i%2C600%2C600i&subset=latin%2Clatin-ext&display=swap',
-        'wastedMs': 440,
+        totalBytes: 389629,
+        url: 'http://localhost:50049/style.css',
+        // This value would be higher if we didn't have a special case for AMP stylesheets
+        wastedMs: 1496,
       },
-      // Due to internal H2 simulation details, parallel HTTP/2 requests are pipelined which makes
-      // it look like Montserrat starts after Fira Sans finishes. It would be preferred
-      // if eventual simulation improvements list Montserrat here as well.
+      {
+        totalBytes: 291,
+        url: 'http://localhost:50049/script.js',
+        wastedMs: 304,
+      },
     ]);
-    expect(result.metricSavings).toEqual({FCP: 469, LCP: 0});
+    expect(result.metricSavings).toEqual({FCP: 0, LCP: 0});
   });
 
   describe('#estimateSavingsWithGraphs', () => {
@@ -172,8 +199,8 @@ describe('Render blocking resources audit', () => {
       documentNode.addDependent(styleNode);
 
       const result = estimate(simulator, documentNode, deferredIds, wastedBytesMap, Stacks);
-      // Saving 1000 + 1000 + 100ms for TCP handshake + 1 RT savings + server response time
-      assert.equal(result, 2100);
+      // Saving 1000 + 100ms for 1 RT savings + server response time
+      assert.equal(result, 1100);
     });
 
     it('does not report savings from AMP-stack when document already exceeds 2.1s', () => {

@@ -8,10 +8,9 @@ import path from 'path';
 import {createRequire} from 'module';
 import url from 'url';
 
-import isDeepEqual from 'lodash/isEqual.js';
+import {isEqual} from 'lodash-es';
 
 import * as constants from './constants.js';
-import {Budget} from './budget.js';
 import ConfigPlugin from './config-plugin.js';
 import {Runner} from '../runner.js';
 import * as i18n from '../lib/i18n/i18n.js';
@@ -70,7 +69,7 @@ const mergeOptionsOfItems = function(items) {
  *    - `null` is treated similarly to `undefined` for whether a value should be overridden.
  *    - `overwriteArrays` controls array extension behavior:
  *        - true: Arrays are overwritten without any merging or concatenation.
- *        - false: Arrays are concatenated and de-duped by isDeepEqual.
+ *        - false: Arrays are concatenated and de-duped by isEqual.
  *    - Objects are recursively merged.
  *    - If the `settings` key is encountered while traversing an object, its arrays are *always*
  *      overridden, not concatenated. (`overwriteArrays` is flipped to `true`)
@@ -91,7 +90,7 @@ function _mergeConfigFragment(base, extension, overwriteArrays = false) {
     if (!Array.isArray(base)) throw new TypeError(`Expected array but got ${typeof base}`);
     const merged = base.slice();
     extension.forEach(item => {
-      if (!merged.some(candidate => isDeepEqual(candidate, item))) merged.push(item);
+      if (!merged.some(candidate => isEqual(candidate, item))) merged.push(item);
     });
 
     return merged;
@@ -347,9 +346,6 @@ function resolveSettings(settingsJson = {}, overrides = undefined) {
     true
   );
 
-  if (settingsWithFlags.budgets) {
-    settingsWithFlags.budgets = Budget.initializeBudget(settingsWithFlags.budgets);
-  }
   // Locale is special and comes only from flags/settings/lookupLocale.
   settingsWithFlags.locale = locale;
 

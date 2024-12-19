@@ -9,7 +9,7 @@ import assert from 'assert/strict';
 import {Interactive} from '../../../computed/metrics/interactive.js';
 import {getURLArtifactFromDevtoolsLog, loadTraceFixture} from '../../test-utils.js';
 
-const {trace, devtoolsLog} = loadTraceFixture('progressive-app-m60');
+const {trace, devtoolsLog} = loadTraceFixture('progressive-app');
 const URL = getURLArtifactFromDevtoolsLog(devtoolsLog);
 
 /**
@@ -37,8 +37,8 @@ function generateNetworkRecords(partialRecords, timeOrigin) {
       statusCode: item.statusCode || 200,
       requestMethod: item.requestMethod || 'GET',
       finished: typeof item.finished === 'undefined' ? true : item.finished,
-      networkRequestTime: (item.start + timeOriginInMs) / 1000,
-      networkEndTime: item.end === -1 ? -1 : (item.end + timeOriginInMs) / 1000,
+      networkRequestTime: item.start + timeOriginInMs,
+      networkEndTime: item.end === -1 ? -1 : item.end + timeOriginInMs,
     };
     return /** @type {LH.Artifacts.NetworkRequest} */ (record);
   });
@@ -59,9 +59,9 @@ describe('Metrics: TTI', () => {
       timing: Math.round(result.timing),
       optimistic: Math.round(result.optimisticEstimate.timeInMs),
       pessimistic: Math.round(result.pessimisticEstimate.timeInMs),
+      optimisticNodeTimings: result.optimisticEstimate.nodeTimings.size,
+      pessimisticNodeTimings: result.pessimisticEstimate.nodeTimings.size,
     }).toMatchSnapshot();
-    assert.equal(result.optimisticEstimate.nodeTimings.size, 20);
-    assert.equal(result.pessimisticEstimate.nodeTimings.size, 80);
     assert.ok(result.optimisticGraph, 'should have created optimistic graph');
     assert.ok(result.pessimisticGraph, 'should have created pessimistic graph');
   });
@@ -74,8 +74,8 @@ describe('Metrics: TTI', () => {
     const result = await getResult({trace, devtoolsLog, gatherContext, settings, URL},
       context);
 
-    assert.equal(Math.round(result.timing), 1582);
-    assert.equal(result.timestamp, 225415754204);
+    assert.equal(Math.round(result.timing), 224);
+    assert.equal(result.timestamp, 376406205074);
   });
 
   it('should compute an observed value (mobile)', async () => {
@@ -86,8 +86,8 @@ describe('Metrics: TTI', () => {
     const result = await getResult({trace, devtoolsLog, gatherContext, settings, URL},
       context);
 
-    assert.equal(Math.round(result.timing), 1582);
-    assert.equal(result.timestamp, 225415754204);
+    assert.equal(Math.round(result.timing), 224);
+    assert.equal(result.timestamp, 376406205074);
   });
 
   describe('#findOverlappingQuietPeriods', () => {
@@ -105,7 +105,7 @@ describe('Metrics: TTI', () => {
       assert.deepEqual(result.networkQuietPeriod, {start: 0, end: traceEnd / 1000});
     });
 
-    it('should throw when trace ended too soon after FMP', () => {
+    it('should throw when trace ended too soon after FCP', () => {
       const timeOrigin = 220023532;
       const firstContentfulPaint = 2500 * 1000 + timeOrigin;
       const traceEnd = 5000 * 1000 + timeOrigin;
@@ -190,7 +190,7 @@ describe('Metrics: TTI', () => {
       );
 
       const cpu = [
-        // quiet period before FMP
+        // quiet period before FCP
         {start: 9000, end: 9900},
         {start: 11000, end: 13000},
         // quiet period during network activity

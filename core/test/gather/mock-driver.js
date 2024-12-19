@@ -24,9 +24,11 @@ import {NetworkMonitor} from '../../gather/driver/network-monitor.js';
 /** @typedef {import('../../gather/driver/execution-context.js')} ExecutionContext */
 
 function createMockSession() {
+  const mockSendCommand = createMockSendCommandFn();
   return {
     setTargetInfo: fnAny(),
-    sendCommand: createMockSendCommandFn(),
+    sendCommand: mockSendCommand,
+    sendCommandAndIgnore: mockSendCommand,
     setNextProtocolTimeout: fnAny(),
     hasNextProtocolTimeout: fnAny(),
     getNextProtocolTimeout: fnAny(),
@@ -36,6 +38,7 @@ function createMockSession() {
     addProtocolMessageListener: createMockOnFn(),
     removeProtocolMessageListener: fnAny(),
     dispose: fnAny(),
+    onCrashPromise: fnAny().mockReturnValue(new Promise(() => {})),
 
     /** @return {LH.Gatherer.ProtocolSession} */
     asSession() {

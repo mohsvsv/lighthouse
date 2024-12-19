@@ -4,10 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import * as i18n from '../lib/i18n/i18n.js';
 import * as TraceEngine from '../lib/trace-engine.js';
 import {makeComputedArtifact} from './computed-artifact.js';
 import {CumulativeLayoutShift} from './metrics/cumulative-layout-shift.js';
 import {ProcessedTrace} from './processed-trace.js';
+import * as LH from '../../types/lh.js';
 
 /**
  * @fileoverview Processes trace with the shared trace engine.
@@ -15,24 +17,51 @@ import {ProcessedTrace} from './processed-trace.js';
 class TraceEngineResult {
   /**
    * @param {LH.TraceEvent[]} traceEvents
+   * @return {Promise<LH.Artifacts.TraceEngineResult>}
    */
   static async runTraceEngine(traceEvents) {
-    const engine = new TraceEngine.TraceProcessor({
-      AuctionWorklets: TraceEngine.TraceHandlers.AuctionWorklets,
-      Initiators: TraceEngine.TraceHandlers.Initiators,
-      LayoutShifts: TraceEngine.TraceHandlers.LayoutShifts,
-      NetworkRequests: TraceEngine.TraceHandlers.NetworkRequests,
-      Renderer: TraceEngine.TraceHandlers.Renderer,
-      Samples: TraceEngine.TraceHandlers.Samples,
-      Screenshots: TraceEngine.TraceHandlers.Screenshots,
-    });
+    const traceHandlers = {...TraceEngine.TraceHandlers};
+
+    // @ts-expect-error Temporarily disable this handler
+    // It's not currently used anywhere in trace engine insights or Lighthouse.
+    // TODO: Re-enable this when its memory usage is improved in the trace engine
+    // https://github.com/GoogleChrome/lighthouse/issues/16111
+    delete traceHandlers.Invalidations;
+
+    const processor = new TraceEngine.TraceProcessor(traceHandlers);
+
     // eslint-disable-next-line max-len
-    await engine.parse(/** @type {import('@paulirish/trace_engine').Types.TraceEvents.TraceEventData[]} */ (
+    await processor.parse(/** @type {import('@paulirish/trace_engine').Types.Events.Event[]} */ (
       traceEvents
-    ));
-    // TODO: use TraceEngine.TraceProcessor.createWithAllHandlers above.
-    return /** @type {import('@paulirish/trace_engine').Handlers.Types.TraceParseData} */(
-      engine.data);
+    ), {});
+    if (!processor.parsedTrace) throw new Error('No data');
+    if (!processor.insights) throw new Error('No insights');
+    this.localizeInsights(processor.insights);
+    return {data: processor.parsedTrace, insights: processor.insights};
+  }
+
+  /**
+   * @param {import('@paulirish/trace_engine/models/trace/insights/types.js').TraceInsightSets} insightSets
+   */
+  static localizeInsights(insightSets) {
+    for (const insightSet of insightSets.values()) {
+      for (const [name, model] of Object.entries(insightSet.model)) {
+        if (model instanceof Error) {
+          continue;
+        }
+
+        const key = `node_modules/@paulirish/trace_engine/models/trace/insights/${name}.js`;
+        const str_ = i18n.createIcuMessageFn(key, {
+          title: model.title,
+          description: model.description,
+        });
+
+        // @ts-expect-error coerce to string, should be fine
+        model.title = str_(model.title);
+        // @ts-expect-error coerce to string, should be fine
+        model.description = str_(model.description);
+      }
+    }
   }
 
   /**
@@ -67,9 +96,6 @@ class TraceEngineResult {
     }
 
     const result = await TraceEngineResult.runTraceEngine(traceEvents);
-    if (!result) {
-      throw new Error('null trace engine result');
-    }
     return result;
   }
 }

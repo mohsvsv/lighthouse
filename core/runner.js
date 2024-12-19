@@ -9,7 +9,7 @@ import path from 'path';
 
 
 import log from 'lighthouse-logger';
-import isDeepEqual from 'lodash/isEqual.js';
+import {isEqual} from 'lodash-es';
 
 import {ReportScoring} from './scoring.js';
 import {Audit} from './audits/audit.js';
@@ -106,7 +106,6 @@ class Runner {
           networkUserAgent: artifacts.NetworkUserAgent,
           hostUserAgent: artifacts.HostUserAgent,
           benchmarkIndex: artifacts.BenchmarkIndex,
-          benchmarkIndexes: artifacts.BenchmarkIndexes,
           credits,
         },
         audits: auditResultsById,
@@ -199,32 +198,27 @@ class Runner {
         data: sentryContext,
       });
 
-      /** @type {LH.Artifacts} */
-      let artifacts;
       if (settings.auditMode && !settings.gatherMode) {
         // No browser required, just load the artifacts from disk.
         const path = this._getDataSavePath(settings);
-        artifacts = assetSaver.loadArtifacts(path);
-      } else {
-        const runnerStatus = {msg: 'Gather phase', id: 'lh:runner:gather'};
-        log.time(runnerStatus, 'verbose');
+        return assetSaver.loadArtifacts(path);
+      }
 
-        artifacts = await gatherFn({
-          resolvedConfig: options.resolvedConfig,
-        });
+      const runnerStatus = {msg: 'Gather phase', id: 'lh:runner:gather'};
+      log.time(runnerStatus, 'verbose');
 
-        log.timeEnd(runnerStatus);
+      const artifacts = await gatherFn({resolvedConfig: options.resolvedConfig});
+      log.timeEnd(runnerStatus);
 
-        // If `gather` is run multiple times before `audit`, the timing entries for each `gather` can pollute one another.
-        // We need to clear the timing entries at the end of gathering.
-        // Set artifacts.Timing again to ensure lh:runner:gather is included.
-        artifacts.Timing = log.takeTimeEntries();
+      // If `gather` is run multiple times before `audit`, the timing entries for each `gather` can pollute one another.
+      // We need to clear the timing entries at the end of gathering.
+      // Set artifacts.Timing again to ensure lh:runner:gather is included.
+      artifacts.Timing = log.takeTimeEntries();
 
-        // -G means save these to disk (e.g. ./latest-run).
-        if (settings.gatherMode) {
-          const path = this._getDataSavePath(settings);
-          await assetSaver.saveArtifacts(artifacts, path);
-        }
+      // -G means save these to disk (e.g. ./latest-run).
+      if (settings.gatherMode) {
+        const path = this._getDataSavePath(settings);
+        await assetSaver.saveArtifacts(artifacts, path);
       }
 
       return artifacts;
@@ -304,7 +298,6 @@ class Runner {
         auditMode: undefined,
         output: undefined,
         channel: undefined,
-        budgets: undefined,
       };
       const normalizedGatherSettings = Object.assign({}, artifacts.settings, overrides);
       const normalizedAuditSettings = Object.assign({}, settings, overrides);
@@ -315,7 +308,7 @@ class Runner {
         ...Object.keys(normalizedAuditSettings),
       ]);
       for (const k of keys) {
-        if (!isDeepEqual(normalizedGatherSettings[k], normalizedAuditSettings[k])) {
+        if (!isEqual(normalizedGatherSettings[k], normalizedAuditSettings[k])) {
           throw new Error(
             `Cannot change settings between gathering and auditing…
 Difference found at: \`${k}\`
@@ -325,8 +318,8 @@ vs
         }
       }
 
-      // Call `isDeepEqual` on the entire thing, just in case something was missed.
-      if (!isDeepEqual(normalizedGatherSettings, normalizedAuditSettings)) {
+      // Call `isEqual` on the entire thing, just in case something was missed.
+      if (!isEqual(normalizedGatherSettings, normalizedAuditSettings)) {
         throw new Error('Cannot change settings between gathering and auditing');
       }
     }
@@ -394,7 +387,6 @@ vs
         // If artifact was an error, output error result on behalf of audit.
         if (artifacts[artifactName] instanceof Error) {
           /** @type {Error} */
-          // @ts-expect-error: TODO why is this a type error now?
           const artifactError = artifacts[artifactName];
 
           log.warn('Runner', `${artifactName} gatherer, required by audit ${audit.meta.id},` +

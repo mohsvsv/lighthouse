@@ -126,7 +126,7 @@ function waitForFcp(session, pauseAfterFcpMs, maxWaitForFcpMs) {
  */
 function waitForNetworkIdle(session, networkMonitor, networkQuietOptions) {
   let hasDCLFired = false;
-  /** @type {NodeJS.Timer|undefined} */
+  /** @type {NodeJS.Timeout|undefined} */
   let idleTimeout;
   /** @type {(() => void)} */
   let cancel = () => {
@@ -225,7 +225,7 @@ function waitForCPUIdle(session, waitForCPUQuiet) {
     };
   }
 
-  /** @type {NodeJS.Timer|undefined} */
+  /** @type {NodeJS.Timeout|undefined} */
   let lastTimeout;
   let canceled = false;
 
@@ -355,7 +355,7 @@ function waitForLoadEvent(session, pauseAfterLoadMs) {
   };
 
   const promise = new Promise((resolve, reject) => {
-    /** @type {NodeJS.Timer|undefined} */
+    /** @type {NodeJS.Timeout|undefined} */
     let loadTimeout;
     const loadListener = function() {
       loadTimeout = setTimeout(resolve, pauseAfterLoadMs);
@@ -420,7 +420,7 @@ async function waitForFullyLoaded(session, networkMonitor, options) {
     cpuQuietThresholdMs, maxWaitForLoadedMs, maxWaitForFcpMs} = options;
   const {waitForFcp, waitForLoadEvent, waitForNetworkIdle, waitForCPUIdle} =
     options._waitForTestOverrides || DEFAULT_WAIT_FUNCTIONS;
-  /** @type {NodeJS.Timer|undefined} */
+  /** @type {NodeJS.Timeout|undefined} */
   let maxTimeoutHandle;
 
   // Listener for FCP. Resolves pauseAfterFcpMs ms after first FCP event.
@@ -498,9 +498,8 @@ async function waitForFullyLoaded(session, networkMonitor, options) {
       if (await isPageHung(session)) {
         log.warn('waitFor', 'Page appears to be hung, killing JavaScript...');
         // We don't await these, as we want to exit with PAGE_HUNG
-        void session.sendCommand('Emulation.setScriptExecutionDisabled', {value: true})
-          .catch(_ => {});
-        void session.sendCommand('Runtime.terminateExecution').catch(_ => {});
+        void session.sendCommandAndIgnore('Emulation.setScriptExecutionDisabled', {value: true});
+        void session.sendCommandAndIgnore('Runtime.terminateExecution');
         throw new LighthouseError(LighthouseError.errors.PAGE_HUNG);
       }
 

@@ -18,19 +18,18 @@ describe('DOMSize audit', () => {
 
   beforeEach(() => {
     const mainDocumentUrl = 'https://example.com/';
-
+    const networkRecords = [{url: mainDocumentUrl, priority: 'High', transferSize: 1000}];
     const trace = createTestTrace({
+      largestContentfulPaint: 15,
       topLevelTasks: [
         {ts: 1000, duration: 1000, children: [
           {ts: 1100, duration: 200, eventName: 'ScheduleStyleRecalculation'},
         ]},
       ],
+      networkRecords,
     });
 
-    const devtoolsLog = networkRecordsToDevtoolsLog([{
-      url: mainDocumentUrl,
-      priority: 'High',
-    }]);
+    const devtoolsLog = networkRecordsToDevtoolsLog(networkRecords);
 
     artifacts = {
       DOMStats: {

@@ -433,7 +433,8 @@ describe('OffscreenImages audit', () => {
       priority: 'High',
       timing: {receiveHeadersEnd: 2.5},
     };
-    const devtoolsLog = networkRecordsToDevtoolsLog([recordA, recordB]);
+    const networkRecords = [recordA, recordB];
+    const devtoolsLog = networkRecordsToDevtoolsLog(networkRecords);
 
     const topLevelTasks = [
       {ts: 1975, duration: 50},
@@ -457,7 +458,11 @@ describe('OffscreenImages audit', () => {
           src: recordB.url,
         }),
       ],
-      traces: {defaultPass: createTestTrace({topLevelTasks})},
+      traces: {defaultPass: createTestTrace({
+        largestContentfulPaint: 15,
+        topLevelTasks,
+        networkRecords,
+      })},
       devtoolsLogs: {defaultPass: devtoolsLog},
       URL: {
         requestedUrl: recordA.url,
@@ -494,7 +499,8 @@ describe('OffscreenImages audit', () => {
       priority: 'High',
       timing: {receiveHeadersEnd: 1.5},
     };
-    const devtoolsLog = networkRecordsToDevtoolsLog([recordA, recordB]);
+    const networkRecords = [recordA, recordB];
+    const devtoolsLog = networkRecordsToDevtoolsLog(networkRecords);
 
     // Enough tasks to spread out graph.
     const topLevelTasks = [
@@ -521,7 +527,11 @@ describe('OffscreenImages audit', () => {
           src: recordB.url,
         }),
       ],
-      traces: {defaultPass: createTestTrace({topLevelTasks})},
+      traces: {defaultPass: createTestTrace({
+        largestContentfulPaint: 15,
+        topLevelTasks,
+        networkRecords,
+      })},
       devtoolsLogs: {defaultPass: devtoolsLog},
       URL: {
         requestedUrl: recordA.url,
@@ -564,7 +574,7 @@ describe('OffscreenImages audit', () => {
           src: 'b',
         }),
       ],
-      traces: {defaultPass: createTestTrace({traceEnd: 2000})},
+      traces: {defaultPass: createTestTrace({traceEnd: 2000, networkRecords})},
       devtoolsLogs: {},
     };
 
@@ -587,6 +597,7 @@ describe('OffscreenImages audit', () => {
       priority: 'High',
       timing: {receiveHeadersEnd: 1.25},
     };
+    const networkRecords = [networkRecord];
 
     const artifacts = {
       ViewportDimensions: DEFAULT_DIMENSIONS,
@@ -598,7 +609,7 @@ describe('OffscreenImages audit', () => {
           networkRecord,
         }),
       ],
-      traces: {defaultPass: createTestTrace({traceEnd: 2000})},
+      traces: {defaultPass: createTestTrace({traceEnd: 2000, networkRecords})},
       devtoolsLogs: {},
     };
 
