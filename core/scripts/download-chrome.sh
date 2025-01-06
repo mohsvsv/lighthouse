@@ -93,3 +93,9 @@ if [ "$machine" != "MinGw" ]; then
   echo "CHROME_PATH version:"
   $CHROME_PATH --version
 fi
+
+# https://chromium.googlesource.com/chromium/src/+/main/docs/linux/suid_sandbox_development.md
+if [ "$machine" == "Linux" && -n "$CI" ]; then
+  sudo chown root:root "$chrome_out/chrome_sandbox"
+  sudo chmod 4755 "$chrome_out/chrome_sandbox"
+fi
