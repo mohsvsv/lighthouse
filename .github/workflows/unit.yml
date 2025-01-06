@@ -19,6 +19,9 @@ jobs:
     name: node ${{ matrix.node }}
     env:
       CHROME_PATH: ${{ github.workspace }}/.tmp/chrome-tot/chrome
+      # Dev builds like ToT need this in Ubuntu 23.10+
+      # https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md
+      CHROME_DEVEL_SANDBOX: ${{ github.workspace }}/.tmp/chrome-tot/chrome_sandbox
       LATEST_NODE: '18'
       FORCE_COLOR: true
 

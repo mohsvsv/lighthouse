@@ -128,6 +128,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CHROME_PATH: ${{ github.workspace }}/lighthouse/.tmp/chrome-tot/chrome
+      # Dev builds like ToT need this in Ubuntu 23.10+
+      # https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md
+      CHROME_DEVEL_SANDBOX: ${{ github.workspace }}/.tmp/chrome-tot/chrome_sandbox
       FORCE_COLOR: true
     name: DevTools smoke ${{ matrix.smoke-test-shard }}/${{ strategy.job-total }}
 
