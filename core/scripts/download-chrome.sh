@@ -97,5 +97,5 @@ fi
 # https://chromium.googlesource.com/chromium/src/+/main/docs/linux/suid_sandbox_development.md
 if [ "$machine" == "Linux" ] && [[ "${CI:-}" ]]; then
   chmod 4755 "$chrome_out/chrome_sandbox"
-  chown root:root "$chrome_out/chrome_sandbox"
+  sudo chown root:root "$chrome_out/chrome_sandbox"
 fi
