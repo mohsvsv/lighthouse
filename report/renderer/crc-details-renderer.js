@@ -139,19 +139,17 @@ class CriticalRequestChainRenderer {
   /**
    * Recursively builds a tree from segments.
    * @param {DOM} dom
-   * @param {DocumentFragment} tmpl
    * @param {CRCSegment} segment
    * @param {Element} elem Parent element.
-   * @param {LH.Audit.Details.CriticalRequestChain} details
    * @param {DetailsRenderer} detailsRenderer
    */
-  static buildTree(dom, tmpl, segment, elem, details, detailsRenderer) {
+  static buildTree(dom, segment, elem, detailsRenderer) {
     elem.append(CRCRenderer.createChainNode(dom, segment, detailsRenderer));
     if (segment.node.children) {
       for (const key of Object.keys(segment.node.children)) {
         const childSegment = CRCRenderer.createSegment(segment.node.children, key,
           segment.startTime, segment.transferSize, segment.treeMarkers, segment.isLastChild);
-        CRCRenderer.buildTree(dom, tmpl, childSegment, elem, details, detailsRenderer);
+        CRCRenderer.buildTree(dom, childSegment, elem, detailsRenderer);
       }
     }
   }
@@ -177,7 +175,7 @@ class CriticalRequestChainRenderer {
     const root = CRCRenderer.initTree(details.chains);
     for (const key of Object.keys(root.tree)) {
       const segment = CRCRenderer.createSegment(root.tree, key, root.startTime, root.transferSize);
-      CRCRenderer.buildTree(dom, tmpl, segment, containerEl, details, detailsRenderer);
+      CRCRenderer.buildTree(dom, segment, containerEl, detailsRenderer);
     }
 
     return dom.find('.lh-crc-container', tmpl);

@@ -30,8 +30,10 @@ declare module Details {
     type: 'criticalrequestchain';
     longestChain: {
       duration: number;
-      length: number;
-      transferSize: number;
+      /** @deprecated Not used in Lighthouse report. */
+      length?: number;
+      /** @deprecated Not used in Lighthouse report. */
+      transferSize?: number;
     };
     chains: SimpleCriticalRequestNode;
   }
