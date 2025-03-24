@@ -204,7 +204,7 @@ const expectations = {
       },
       'modern-image-formats': {
         details: {
-          overallSavingsBytes: '137000 +/- 10000',
+          overallSavingsBytes: '556000 +/- 10000',
           items: [
             {url: /lighthouse-1024x680.jpg$/},
             {url: /lighthouse-unoptimized.jpg$/},
@@ -238,12 +238,12 @@ const expectations = {
       // Check that images aren't TOO BIG.
       'uses-responsive-images': {
         details: {
-          overallSavingsBytes: '169000 +/- 5000',
+          overallSavingsBytes: '347000 +/- 5000',
           items: [
             {wastedPercent: '81 +/- 5', url: /lighthouse-1024x680.jpg/},
-            {wastedPercent: '88 +/- 5', url: /lighthouse-2048x1356.webp\?size0/},
             {wastedPercent: '65 +/- 5', url: /lighthouse-480x320.jpg/},
             {wastedPercent: '65 +/- 5', url: /lighthouse-480x320\.jpg\?attributesized/},
+            {wastedPercent: '88 +/- 5', url: /lighthouse-2048x1356.webp\?size0/},
             {wastedPercent: '81 +/- 5', url: /lighthouse-480x320.webp/},
           ],
         },
@@ -279,6 +279,7 @@ const expectations = {
               url: 'http://localhost:10200/byte-efficiency/lighthouse-1024x680.jpg',
               subItems: {
                 items: [
+                  {reason: /Using a modern image format/},
                   {reason: /This image file is larger than it needs to be/},
                 ],
               },
@@ -296,6 +297,7 @@ const expectations = {
               url: 'http://localhost:10200/byte-efficiency/lighthouse-480x320.jpg',
               subItems: {
                 items: [
+                  {reason: /Using a modern image format/},
                   {reason: /This image file is larger than it needs to be/},
                 ],
               },
@@ -304,11 +306,36 @@ const expectations = {
               url: 'http://localhost:10200/byte-efficiency/lighthouse-480x320.jpg?attributesized',
               subItems: {
                 items: [
+                  {reason: /Using a modern image format/},
                   {reason: /This image file is larger than it needs to be/},
                 ],
               },
             },
+            {
+              url: 'http://localhost:10200/byte-efficiency/lighthouse-480x320.jpg?css',
+              subItems: {
+                items: [
+                  {reason: /Using a modern image format/},
+                ],
+              },
+            },
+            {
+              url: 'http://localhost:10200/byte-efficiency/lighthouse-480x320.jpg?sprite',
+              subItems: {
+                items: [
+                  {reason: /Using a modern image format/},
+                ],
+              },
+            },
             // TODO: Flag offscreen images in the insight.
+            // {
+            //   url: 'http://localhost:10200/byte-efficiency/lighthouse-unoptimized.webp',
+            //   subItems: {
+            //     items: [
+            //       {reason: /This image file is larger than it needs to be/},
+            //     ],
+            //   },
+            // },
             // {
             //   url: 'http://localhost:10200/byte-efficiency/lighthouse-480x320.webp',
             //   subItems: {
