@@ -31,26 +31,19 @@ class NetworkDependencyTreeInsight extends Audit {
 
   /**
    * @param {import('@paulirish/trace_engine').Insights.Models.NetworkDependencyTree.CriticalRequestNode[]} nodes
-   * @return {LH.Audit.Details.SimpleCriticalRequestNode}
+   * @return {LH.Audit.Details.NetworkNode}
    */
   static nodesToSimpleCriticalRequestNode(nodes) {
-    /** @type {LH.Audit.Details.SimpleCriticalRequestNode} */
+    /** @type {LH.Audit.Details.NetworkNode} */
     const simpleRequestNode = {};
 
     for (const node of nodes) {
       const {request} = node;
 
-      const timing = request.args.data.timing;
-      const requestTime = timing?.requestTime ?? 0;
-
       simpleRequestNode[request.args.data.requestId] = {
-        request: {
-          url: request.args.data.url,
-          transferSize: request.args.data.encodedDataLength,
-          startTime: requestTime,
-          responseReceivedTime: requestTime + (timing?.receiveHeadersEnd ?? 0) / 1000,
-          endTime: (request.args.data.syntheticData.finishTime) / 1_000_000,
-        },
+        url: request.args.data.url,
+        navStartToEndTime: Math.round(node.timeFromInitialRequest / 1000),
+        transferSize: request.args.data.encodedDataLength,
         children: this.nodesToSimpleCriticalRequestNode(node.children),
       };
     }
@@ -61,16 +54,16 @@ class NetworkDependencyTreeInsight extends Audit {
   /**
    * @param {import('@paulirish/trace_engine').Insights.Models.NetworkDependencyTree.CriticalRequestNode[]} rootNodes
    * @param {number} maxTime
-   * @return {LH.Audit.Details.CriticalRequestChain}
+   * @return {LH.Audit.Details.NetworkTree}
    */
   static createRequestChainDetails(rootNodes, maxTime) {
     const chains = this.nodesToSimpleCriticalRequestNode(rootNodes);
 
     return {
-      type: 'criticalrequestchain',
+      type: 'network-tree',
       chains,
       longestChain: {
-        duration: maxTime / 1000,
+        duration: Math.round(maxTime / 1000),
       },
     };
   }

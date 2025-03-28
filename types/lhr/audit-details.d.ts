@@ -15,6 +15,7 @@ interface BaseDetails {
 
 type Details =
   Details.CriticalRequestChain |
+  Details.NetworkTree |
   Details.DebugData |
   Details.TreemapData |
   Details.Filmstrip |
@@ -26,14 +27,29 @@ type Details =
 
 // Details namespace.
 declare module Details {
+  type NetworkNode = {
+    [id: string]: {
+      url: string;
+      navStartToEndTime: number;
+      transferSize: number;
+      children?: NetworkNode;
+    }
+  };
+
+  interface NetworkTree extends BaseDetails {
+    type: 'network-tree';
+    longestChain: {
+      duration: number;
+    };
+    chains: NetworkNode;
+  }
+
   interface CriticalRequestChain extends BaseDetails {
     type: 'criticalrequestchain';
     longestChain: {
       duration: number;
-      /** @deprecated Not used in Lighthouse report. */
-      length?: number;
-      /** @deprecated Not used in Lighthouse report. */
-      transferSize?: number;
+      length: number;
+      transferSize: number;
     };
     chains: SimpleCriticalRequestNode;
   }
