@@ -49,7 +49,7 @@ declare module Details {
   interface CriticalRequestChain extends BaseDetails {
     type: 'criticalrequestchain';
     longestChain: {
-      /** In seconds */
+      /** In ms */
       duration: number;
       length: number;
       transferSize: number;

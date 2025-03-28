@@ -33,7 +33,7 @@ class NetworkDependencyTreeInsight extends Audit {
    * @param {import('@paulirish/trace_engine').Insights.Models.NetworkDependencyTree.CriticalRequestNode[]} nodes
    * @return {LH.Audit.Details.NetworkNode}
    */
-  static nodesToSimpleCriticalRequestNode(nodes) {
+  static traceEngineNodesToDetailsNodes(nodes) {
     /** @type {LH.Audit.Details.NetworkNode} */
     const simpleRequestNode = {};
 
@@ -44,7 +44,7 @@ class NetworkDependencyTreeInsight extends Audit {
         url: request.args.data.url,
         navStartToEndTime: Math.round(node.timeFromInitialRequest / 1000),
         transferSize: request.args.data.encodedDataLength,
-        children: this.nodesToSimpleCriticalRequestNode(node.children),
+        children: this.traceEngineNodesToDetailsNodes(node.children),
       };
     }
 
@@ -57,7 +57,7 @@ class NetworkDependencyTreeInsight extends Audit {
    * @return {LH.Audit.Details.NetworkTree}
    */
   static createRequestChainDetails(rootNodes, maxTime) {
-    const chains = this.nodesToSimpleCriticalRequestNode(rootNodes);
+    const chains = this.traceEngineNodesToDetailsNodes(rootNodes);
 
     return {
       type: 'network-tree',
