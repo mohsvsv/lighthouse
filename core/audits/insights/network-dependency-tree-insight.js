@@ -52,30 +52,21 @@ class NetworkDependencyTreeInsight extends Audit {
   }
 
   /**
-   * @param {import('@paulirish/trace_engine').Insights.Models.NetworkDependencyTree.CriticalRequestNode[]} rootNodes
-   * @param {number} maxTime
-   * @return {LH.Audit.Details.NetworkTree}
-   */
-  static createRequestChainDetails(rootNodes, maxTime) {
-    const chains = this.traceEngineNodesToDetailsNodes(rootNodes);
-
-    return {
-      type: 'network-tree',
-      chains,
-      longestChain: {
-        duration: Math.round(maxTime / 1000),
-      },
-    };
-  }
-
-  /**
    * @param {LH.Artifacts} artifacts
    * @param {LH.Audit.Context} context
    * @return {Promise<LH.Audit.Product>}
    */
   static async audit(artifacts, context) {
     return adaptInsightToAuditProduct(artifacts, context, 'NetworkDependencyTree', (insight) => {
-      return this.createRequestChainDetails(insight.rootNodes, insight.maxTime);
+      const chains = this.traceEngineNodesToDetailsNodes(insight.rootNodes);
+
+      return {
+        type: 'network-tree',
+        chains,
+        longestChain: {
+          duration: Math.round(insight.maxTime / 1000),
+        },
+      };
     });
   }
 }

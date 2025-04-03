@@ -65,7 +65,7 @@ class CriticalRequestChainRenderer {
   static createChainNode(dom, segment, detailsRenderer) {
     const chainEl = dom.createComponent('crcChain');
 
-    // This can be, either the duration or the chain end time depending on the detail type.
+    // This can be either the duration or the chain end time depending on the detail type.
     let nodeTiming;
     let nodeTransferSize;
     let nodeUrl;
