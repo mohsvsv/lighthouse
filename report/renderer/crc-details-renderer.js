@@ -125,7 +125,7 @@ class CriticalRequestChainRenderer {
       const span = dom.createElement('span', 'lh-crc-node__chain-duration');
       span.textContent =
         ' - ' + Globals.i18n.formatMilliseconds(nodeTiming) + ', ';
-      const span2 = dom.createElement('span', 'lh-crc-node__chain-duration');
+      const span2 = dom.createElement('span', 'lh-crc-node__chain-size');
       span2.textContent = Globals.i18n.formatBytesToKiB(nodeTransferSize, 0.01);
 
       treevalEl.append(span, span2);

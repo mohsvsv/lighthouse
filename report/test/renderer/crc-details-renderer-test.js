@@ -142,10 +142,11 @@ describe('DetailsRenderer', () => {
     assert.equal(chains[1].querySelector('.lh-text__url a').rel, 'noopener');
     assert.equal(chains[1].querySelector('.lh-text__url a').target, '_blank');
     assert.equal(chains[1].querySelector('.lh-text__url-host').textContent, '(example.com)');
-    const durationNodes = chains[1].querySelectorAll('.lh-crc-node__chain-duration');
-    assert.equal(durationNodes[0].textContent, ' - 5,000\xa0ms, ');
+    const durationNode = chains[1].querySelector('.lh-crc-node__chain-duration');
+    assert.equal(durationNode.textContent, ' - 5,000\xa0ms, ');
     // Note: actual transferSize is 2000 bytes but formatter formats to KiBs.
-    assert.equal(durationNodes[1].textContent, '1.95\xa0KiB');
+    const sizeNode = chains[1].querySelector('.lh-crc-node__chain-size');
+    assert.equal(sizeNode.textContent, '1.95\xa0KiB');
   });
 
   it('renders network tree structure', () => {
@@ -168,9 +169,10 @@ describe('DetailsRenderer', () => {
     assert.equal(chains[1].querySelector('.lh-text__url a').rel, 'noopener');
     assert.equal(chains[1].querySelector('.lh-text__url a').target, '_blank');
     assert.equal(chains[1].querySelector('.lh-text__url-host').textContent, '(example.com)');
-    const durationNodes = chains[1].querySelectorAll('.lh-crc-node__chain-duration');
-    assert.equal(durationNodes[0].textContent, ' - 16,000\xa0ms, ');
+    const durationNode = chains[1].querySelector('.lh-crc-node__chain-duration');
+    assert.equal(durationNode.textContent, ' - 16,000\xa0ms, ');
     // Note: actual transferSize is 2000 bytes but formatter formats to KiBs.
-    assert.equal(durationNodes[1].textContent, '1.95\xa0KiB');
+    const sizeNode = chains[1].querySelector('.lh-crc-node__chain-size');
+    assert.equal(sizeNode.textContent, '1.95\xa0KiB');
   });
 });
