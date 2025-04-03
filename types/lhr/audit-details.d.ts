@@ -37,6 +37,13 @@ declare module Details {
     }
   };
 
+  /**
+   * This detail type is introduced to address the differences in how the RPP network tree is displayed vs the old Lighthouse CRC audit:
+   * - The CRC audit will show individual request durations but the new NDT insight will show the entire chain duration
+   * - The CRC audit will only show any timing/size for leaf node requests, but the NDT insight will show this info for all requests
+   * - The CRC audit contains extra request timing info like `responseReceivedTime` but we don't need this for the NDT insight.
+   *   The NDT insight has enough information to fill in this extra data, but we shouldn't add calculations just to fill in the CRC detail type.
+   */
   interface NetworkTree extends BaseDetails {
     type: 'network-tree';
     longestChain: {
