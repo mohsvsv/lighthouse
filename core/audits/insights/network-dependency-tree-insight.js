@@ -44,6 +44,7 @@ class NetworkDependencyTreeInsight extends Audit {
         url: request.args.data.url,
         navStartToEndTime: Math.round(node.timeFromInitialRequest / 1000),
         transferSize: request.args.data.encodedDataLength,
+        isLongest: node.isLongest,
         children: this.traceEngineNodesToDetailsNodes(node.children),
       };
     }

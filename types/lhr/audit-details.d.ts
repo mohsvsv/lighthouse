@@ -33,6 +33,7 @@ declare module Details {
       /** In ms */
       navStartToEndTime: number;
       transferSize: number;
+      isLongest?: boolean;
       children?: NetworkNode;
     }
   };

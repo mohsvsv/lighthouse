@@ -70,6 +70,7 @@ class CriticalRequestChainRenderer {
     let nodeTransferSize;
     let nodeUrl;
     let alwaysShowTiming;
+    let highlightLongest;
 
     // `segment.node.request` indicates that this is a legacy critical request chain details node.
     // For historical reasons, the legacy CRC will only show details for leaf nodes and will show
@@ -84,10 +85,15 @@ class CriticalRequestChainRenderer {
       nodeUrl = segment.node.url;
       nodeTiming = segment.node.navStartToEndTime;
       alwaysShowTiming = true;
+      highlightLongest = segment.node.isLongest;
     }
 
     // Hovering over request shows full URL.
-    dom.find('.lh-crc-node', chainEl).setAttribute('title', nodeUrl);
+    const nodeEl = dom.find('.lh-crc-node', chainEl);
+    nodeEl.setAttribute('title', nodeUrl);
+    if (highlightLongest) {
+      nodeEl.classList.add('lh-crc-node__longest');
+    }
 
     const treeMarkeEl = dom.find('.lh-crc-node__tree-marker', chainEl);
 
