@@ -6,7 +6,7 @@
 
 /* eslint-env browser */
 
-/* globals webtreemap strings Tabulator Cell Row */
+/* globals webtreemap strings */
 
 import {TreemapUtil} from './util.js';
 import {DragAndDrop} from '../../../viewer/app/src/drag-and-drop.js';
@@ -33,16 +33,6 @@ window.logger = logger;
 
 /** @type {TreemapViewer} */
 let treemapViewer;
-
-// Make scrolling in Tabulator more performant.
-// @ts-expect-error
-Cell.prototype.clearHeight = () => {};
-// @ts-expect-error
-Row.prototype.calcHeight = function() {
-  this.height = 24;
-  this.outerHeight = 24;
-  this.heightStyled = '24px';
-};
 
 class TreemapViewer {
   /**
@@ -259,12 +249,13 @@ class TreemapViewer {
       const target = e.target;
       if (!(target instanceof HTMLElement)) return;
 
-      const el = target.closest('.tabulator-row');
+      const el = target.closest('.lh-table-row');
       if (!(el instanceof HTMLElement)) return;
 
       const node = this.tableRowToNodeMap.get(el);
       if (!node || !node.dom) return;
 
+      // TODO: make this bi-directional.
       node.dom.classList.add('webtreemap-node--hover');
       el.addEventListener('mouseout', () => {
         for (const hoverEl of treemapEl.querySelectorAll('.webtreemap-node--hover')) {
@@ -488,11 +479,10 @@ class TreemapViewer {
         dom.createChildOf(el, 'span', 'lh-text-bold').textContent = parts[0];
         dom.createChildOf(el, 'span', 'lh-text-dim').textContent = parts[1];
       }
-
-      this.createTable();
     }
 
     if (rootChanged || viewChanged) {
+      this.createTable();
       this.updateColors();
       this.applyActiveViewModeClass();
     }
@@ -519,7 +509,7 @@ class TreemapViewer {
       if (bundleNode) {
         const bundleNodePath = this.nodeToPathMap.get(bundleNode);
         const amountToTrim = bundleNodePath ? bundleNodePath.length : 0; // should never be 0.
-        name = `(bundle) ${path.slice(amountToTrim).join('/')}`;
+        name = path.slice(amountToTrim).join('/');
       } else {
         // Elide the first path component, which is common to all nodes.
         if (path[0] === this.currentTreemapRoot.name) {
@@ -538,92 +528,121 @@ class TreemapViewer {
       });
     });
 
-    /** @param {'resourceBytes'|'unusedBytes'} field */
-    const makeBytesTooltip = (field) => {
-      /** @param {Tabulator.CellComponent} cell */
-      const fn = (cell) => {
-        /** @type {typeof data[number]} */
-        const dataRow = cell.getRow().getData();
-        const value = dataRow[field];
-        if (value === undefined) return '';
+    /** @param {typeof data[0]} row */
+    const makeNameTooltip = (row) => {
+      /** @type {typeof data[number]} */
+      if (!row.bundleNode) return '';
 
-        return TreemapUtil.i18n.formatBytes(value);
-      };
-      return fn;
+      return `${row.bundleNode.name} ${row.name}`;
     };
 
-    /** @param {Tabulator.CellComponent} cell */
-    const makeNameTooltip = (cell) => {
-      /** @type {typeof data[number]} */
-      const dataRow = cell.getRow().getData();
-      if (!dataRow.bundleNode) return '';
+    /** @param {typeof data[0]} row */
+    const makeCoverageTooltip = (row) => {
+      if (!row.unusedBytes) return '';
 
-      return `${dataRow.bundleNode.name} ${dataRow.name}`;
-    };
-
-    /** @param {Tabulator.CellComponent} cell */
-    const makeCoverageTooltip = (cell) => {
-      /** @type {typeof data[number]} */
-      const dataRow = cell.getRow().getData();
-      if (!dataRow.unusedBytes) return '';
-
-      const percent = dataRow.unusedBytes / dataRow.resourceBytes;
+      const percent = row.unusedBytes / row.resourceBytes;
       return `${TreemapUtil.i18n.formatPercent(percent)} bytes unused`;
     };
 
-    const gridEl = document.createElement('div');
-    tableEl.append(gridEl);
+    let cachedMaxSize = 0;
 
-    const children = this.currentTreemapRoot.children || [];
-    const maxSize = Math.max(...children.map(node => node.resourceBytes));
+    const sortByKey = this.currentViewMode.id === 'unused-bytes' ? 'unusedBytes' : 'resourceBytes';
+    data.sort((a, b) => {
+      return (b[sortByKey] ?? 0) - (a[sortByKey] ?? 0);
+    });
+
+    const headerEl = dom.createChildOf(tableEl, 'div', 'lh-table-header');
+    dom.createChildOf(headerEl, 'div').textContent = TreemapUtil.strings.tableColumnName;
+
+    let bytesColumnLabel = TreemapUtil.strings.resourceBytesLabel;
+    if (this.currentViewMode.id === 'unused-bytes') {
+      bytesColumnLabel = TreemapUtil.strings.unusedBytesLabel;
+    } else if (this.currentViewMode.id === 'duplicate-modules') {
+      bytesColumnLabel = TreemapUtil.strings.duplicatedBytesLabel;
+    }
+    dom.createChildOf(headerEl, 'div').textContent = bytesColumnLabel;
 
     this.tableRowToNodeMap = new WeakMap();
-    this.table = new Tabulator(gridEl, {
-      data,
-      height: '100%',
-      layout: 'fitColumns',
-      tooltips: true,
-      addRowPos: 'top',
-      resizableColumns: true,
-      initialSort: [
-        {column: 'resourceBytes', dir: 'desc'},
-      ],
-      columns: [
-        // eslint-disable-next-line max-len
-        {title: TreemapUtil.strings.tableColumnName, field: 'name', widthGrow: 5, tooltip: makeNameTooltip},
-        // eslint-disable-next-line max-len
-        {title: TreemapUtil.strings.resourceBytesLabel, field: 'resourceBytes', sorter: 'number', headerSortStartingDir: 'desc', tooltip: makeBytesTooltip('resourceBytes'), formatter: cell => {
-          const value = cell.getValue();
-          return TreemapUtil.i18n.formatBytesWithBestUnit(value);
-        }},
-        // eslint-disable-next-line max-len
-        {title: TreemapUtil.strings.unusedBytesLabel, field: 'unusedBytes', sorter: 'number', widthGrow: 1, sorterParams: {alignEmptyValues: 'bottom'}, headerSortStartingDir: 'desc', tooltip: makeBytesTooltip('unusedBytes'), formatter: cell => {
-          const value = cell.getValue();
-          if (value === undefined) return '';
-          return TreemapUtil.i18n.formatBytesWithBestUnit(value);
-        }},
-        // eslint-disable-next-line max-len
-        {title: TreemapUtil.strings.coverageColumnName, widthGrow: 3, headerSort: false, tooltip: makeCoverageTooltip, formatter: cell => {
-          /** @type {typeof data[number]} */
-          const dataRow = cell.getRow().getData();
 
-          const el = dom.createElement('div', 'lh-coverage-bar');
-          if (dataRow.unusedBytes === undefined) return el;
+    if (this.currentViewMode.id === 'duplicate-modules') {
+      /** @type {Map<string, Array<typeof data[0]>>} */
+      const dataByDupeModule = new Map();
+      for (const row of data) {
+        const dupeName = row.node.duplicatedNormalizedModuleName;
+        if (!dupeName) continue;
 
-          el.style.setProperty('--max', String(maxSize));
-          el.style.setProperty('--used', String(dataRow.resourceBytes - dataRow.unusedBytes));
-          el.style.setProperty('--unused', String(dataRow.unusedBytes));
+        const grouped = dataByDupeModule.get(dupeName) ?? [];
+        dataByDupeModule.set(dupeName, grouped);
+        grouped.push(row);
+      }
 
-          dom.createChildOf(el, 'div', 'lh-coverage-bar--used');
-          dom.createChildOf(el, 'div', 'lh-coverage-bar--unused');
+      for (const [dupeName, rows] of dataByDupeModule) {
+        const duplicateBytes = rows
+          .sort((a, b) => b.resourceBytes - a.resourceBytes)
+          .slice(1)
+          .reduce((acc, cur) => acc + cur.resourceBytes, 0);
 
-          return el;
-        }},
-      ],
-      rowFormatter: (row) => {
-        this.tableRowToNodeMap.set(row.getElement(), row.getData().node);
-      },
-    });
+        const rowEl = dom.createChildOf(tableEl, 'div', 'lh-table-row');
+
+        const cell1 = dom.createChildOf(rowEl, 'div');
+        cell1.textContent = dupeName;
+
+        const cell2 = dom.createChildOf(rowEl, 'div');
+        cell2.textContent = TreemapUtil.i18n.formatBytesWithBestUnit(duplicateBytes);
+        cell2.title = TreemapUtil.i18n.formatBytes(duplicateBytes);
+
+        for (const row of rows) {
+          const rowEl = dom.createChildOf(tableEl, 'div', 'lh-table-row lh-table-subrow');
+          this.tableRowToNodeMap.set(rowEl, row.node);
+
+          const cell1 = dom.createChildOf(rowEl, 'div');
+          cell1.textContent = row.bundleNode?.name ?? '';
+
+          const cell2 = dom.createChildOf(rowEl, 'div');
+          if (row === rows[0]) {
+            cell2.textContent = '--';
+          } else {
+            cell2.textContent = TreemapUtil.i18n.formatBytesWithBestUnit(row.resourceBytes);
+            cell2.title = TreemapUtil.i18n.formatBytes(row.resourceBytes);
+          }
+        }
+
+        dom.createChildOf(tableEl, 'div', 'lh-table-separator');
+      }
+
+      return;
+    }
+
+    for (const row of data) {
+      const rowEl = dom.createChildOf(tableEl, 'div', 'lh-table-row');
+      this.tableRowToNodeMap.set(rowEl, row.node);
+
+      const cell1 = dom.createChildOf(rowEl, 'div');
+      cell1.textContent = row.name;
+      cell1.title = makeNameTooltip(row);
+
+      const bytes = this.currentViewMode.id === 'unused-bytes' ?
+        row.unusedBytes ?? 0 :
+        row.resourceBytes;
+      const cell2 = dom.createChildOf(rowEl, 'div');
+      cell2.textContent = TreemapUtil.i18n.formatBytesWithBestUnit(bytes);
+      cell2.title = TreemapUtil.i18n.formatBytes(bytes);
+
+      if (this.currentViewMode.id === 'unused-bytes') {
+        cachedMaxSize = cachedMaxSize || Math.max(...data.map(node => node.resourceBytes));
+
+        const el = dom.createChildOf(tableEl, 'div', 'lh-coverage-bar');
+        el.title = makeCoverageTooltip(row);
+        el.style.setProperty('--max', String(cachedMaxSize));
+        el.style.setProperty('--used', String(row.resourceBytes - bytes));
+        el.style.setProperty('--unused', String(row.unusedBytes));
+
+        dom.createChildOf(el, 'div', 'lh-coverage-bar--used');
+        dom.createChildOf(el, 'div', 'lh-coverage-bar--unused');
+      }
+
+      dom.createChildOf(tableEl, 'div', 'lh-table-separator');
+    }
   }
 
   /**
@@ -641,7 +660,6 @@ class TreemapViewer {
 
     this.treemap.layout(this.currentTreemapRoot, this.el);
     this.updateColors();
-    if (this.table) this.table.redraw();
   }
 
   /**
